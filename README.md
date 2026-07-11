@@ -24,10 +24,12 @@ antes de publicarlo.
 
 ## Arquitectura
 
-- **backend/**: Node.js + Express + TypeScript + Prisma (SQLite en
-  desarrollo, fácilmente migrable a PostgreSQL). Autenticación JWT con dos
-  roles (`ADMIN`, `RESIDENT`).
+- **backend/**: Node.js + Express + TypeScript + Prisma + PostgreSQL.
+  Autenticación JWT con dos roles (`ADMIN`, `RESIDENT`).
 - **frontend/**: React + TypeScript + Vite + Tailwind CSS.
+
+¿Quieres un link público para usar la app de verdad (no solo el código)?
+Sigue la guía en [`DEPLOY.md`](./DEPLOY.md).
 
 El modelo de datos separa `Service` (Urgencias, UCI...) de `Post` (las
 puertas), así que añadir un nuevo servicio como UCI en el futuro es
@@ -38,10 +40,13 @@ todo lo demás (residentes, vacaciones, algoritmo de generación, UI).
 
 ### Backend
 
+Necesitas una base de datos PostgreSQL accesible (local, Docker, o una
+gratuita en la nube tipo Railway/Neon/Supabase).
+
 ```bash
 cd backend
 npm install
-cp .env.example .env   # revisa JWT_SECRET y DATABASE_URL
+cp .env.example .env   # ajusta DATABASE_URL, JWT_SECRET
 npx prisma migrate deploy
 npm run seed            # crea el servicio "Urgencias" (P1-P4) y un admin de prueba
 npm run dev              # http://localhost:4000
@@ -57,6 +62,10 @@ cd frontend
 npm install
 npm run dev               # http://localhost:5173 (proxy a la API en :4000)
 ```
+
+Para desplegar en producción, define `VITE_API_URL` con la URL pública del
+backend (p.ej. `https://tu-backend.up.railway.app/api`); en desarrollo no
+hace falta, se usa el proxy de Vite.
 
 ### Tests
 

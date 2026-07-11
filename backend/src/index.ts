@@ -9,7 +9,10 @@ import serviceRoutes from "./routes/services";
 import scheduleRoutes from "./routes/schedule";
 
 const app = express();
-app.use(cors());
+// En producción, define CORS_ORIGIN con la URL del frontend desplegado
+// (p.ej. https://tuapp.vercel.app). En desarrollo, sin definir, se permite cualquier origen.
+const corsOrigin = process.env.CORS_ORIGIN;
+app.use(cors({ origin: corsOrigin ? corsOrigin.split(",") : true }));
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
