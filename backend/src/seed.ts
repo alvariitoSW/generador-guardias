@@ -1,8 +1,6 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "./prismaClient";
 
 async function main() {
   const service = await prisma.service.upsert({

@@ -29,7 +29,8 @@ antes de publicarlo.
 - **frontend/**: React + TypeScript + Vite + Tailwind CSS.
 
 ¿Quieres un link público para usar la app de verdad (no solo el código)?
-Sigue la guía en [`DEPLOY.md`](./DEPLOY.md).
+**[Despliega con un clic en Render](https://render.com/deploy?repo=https://github.com/alvariitoSW/generador-guardias)**
+o mira las alternativas en [`DEPLOY.md`](./DEPLOY.md).
 
 El modelo de datos separa `Service` (Urgencias, UCI...) de `Post` (las
 puertas), así que añadir un nuevo servicio como UCI en el futuro es

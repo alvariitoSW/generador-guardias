@@ -1,0 +1,37 @@
+databases:
+  - name: generador-guardias-db
+    databaseName: guardias
+    user: guardias
+    plan: free
+
+services:
+  - type: web
+    name: generador-guardias-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: generador-guardias-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://generador-guardias-frontend.onrender.com
+
+  - type: web
+    name: generador-guardias-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://generador-guardias-backend.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
