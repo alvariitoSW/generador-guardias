@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite para desarrollo. Para producción, cambiar a "postgresql" y
+  // actualizar DATABASE_URL en .env (el resto del esquema es compatible).
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  RESIDENT
+}
+
+enum ScheduleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(RESIDENT)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  resident     Resident?
+}
+
+model Resident {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  residencyYear Int? // R1..R5
+  // Guardias máximas por mes (por defecto 4, configurable por si cambia la norma)
+  monthlyQuota  Int      @default(4)
+  createdAt     DateTime @default(now())
+
+  vacations   Vacation[]
+  preferences Preference[]
+  assignments ShiftAssignment[]
+}
+
+model Service {
+  id             String          @id @default(cuid())
+  name           String          @unique // "Urgencias", "UCI", ...
+  createdAt      DateTime        @default(now())
+  posts          Post[]
+  scheduleMonths ScheduleMonth[]
+}
+
+model Post {
+  id          String            @id @default(cuid())
+  serviceId   String
+  service     Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  name        String // P1, P2, P3, P4
+  slotsPerDay Int               @default(2)
+  order       Int               @default(0)
+  createdAt   DateTime          @default(now())
+  assignments ShiftAssignment[]
+
+  @@unique([serviceId, name])
+}
+
+model Vacation {
+  id         String   @id @default(cuid())
+  residentId String
+  resident   Resident @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  startDate  DateTime
+  endDate    DateTime
+  reason     String?
+  createdAt  DateTime @default(now())
+}
+
+// Preferencias de un residente para un mes concreto de un servicio concreto
+model Preference {
+  id         String   @id @default(cuid())
+  residentId String
+  resident   Resident @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  serviceId  String
+  year       Int
+  month      Int // 1-12
+
+  // JSON arrays serializados como texto, p.ej. "[1,3,5]" (Lun=1..Vie=5)
+  preferredWeekdays String @default("[]")
+  avoidWeekdays     String @default("[]")
+  // JSON array de fechas ISO concretas a evitar dentro del mes (motivos puntuales, no vacaciones)
+  avoidDates        String @default("[]")
+  preferredPostId   String?
+  notes             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([residentId, serviceId, year, month])
+}
+
+model ScheduleMonth {
+  id          String         @id @default(cuid())
+  serviceId   String
+  service     Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  year        Int
+  month       Int
+  status      ScheduleStatus @default(DRAFT)
+  generatedAt DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime       @default(now())
+
+  assignments ShiftAssignment[]
+
+  @@unique([serviceId, year, month])
+}
+
+model ShiftAssignment {
+  id              String        @id @default(cuid())
+  scheduleMonthId String
+  scheduleMonth   ScheduleMonth @relation(fields: [scheduleMonthId], references: [id], onDelete: Cascade)
+  postId          String
+  post            Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  residentId      String
+  resident        Resident      @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  date            DateTime
+  createdAt       DateTime      @default(now())
+
+  @@unique([postId, date, residentId])
+}
