@@ -49,6 +49,8 @@ export interface Preference {
   outgoingFirstDay: boolean;
   hasOtherServiceGuardias: boolean;
   otherServiceGuardiaDates: string[];
+  reducedQuota: number | null;
+  reducedQuotaReason?: string | null;
   preferredPostId: string | null;
   notes?: string | null;
 }

@@ -27,6 +27,8 @@ const upsertSchema = z.object({
   outgoingFirstDay: z.boolean().default(false),
   hasOtherServiceGuardias: z.boolean().default(false),
   otherServiceGuardiaDates: dateArray.default([]),
+  reducedQuota: z.number().int().min(0).max(20).nullable().optional(),
+  reducedQuotaReason: z.string().optional(),
   preferredPostId: z.string().nullable().optional(),
   notes: z.string().optional(),
   residentId: z.string().optional(), // solo admin
@@ -70,6 +72,16 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
   const residentId = await getResidentIdForRequest(req, data.residentId);
   if (!residentId) return res.status(404).json({ error: "No tienes perfil de residente" });
 
+  if (data.reducedQuota != null) {
+    const resident = await prisma.resident.findUnique({ where: { id: residentId } });
+    if (!resident) return res.status(404).json({ error: "No tienes perfil de residente" });
+    if (data.reducedQuota >= resident.monthlyQuota) {
+      return res.status(400).json({
+        error: `El número de guardias debe ser menor que tu objetivo habitual (${resident.monthlyQuota})`,
+      });
+    }
+  }
+
   const preferredDates = JSON.stringify(data.preferredDates);
   const avoidWeekdays = JSON.stringify(data.avoidWeekdays);
   const avoidDates = JSON.stringify(data.avoidDates);
@@ -95,6 +107,8 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
       outgoingFirstDay: data.outgoingFirstDay,
       hasOtherServiceGuardias: data.hasOtherServiceGuardias,
       otherServiceGuardiaDates,
+      reducedQuota: data.reducedQuota ?? null,
+      reducedQuotaReason: data.reducedQuotaReason,
       preferredPostId: data.preferredPostId ?? null,
       notes: data.notes,
     },
@@ -105,6 +119,8 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
       outgoingFirstDay: data.outgoingFirstDay,
       hasOtherServiceGuardias: data.hasOtherServiceGuardias,
       otherServiceGuardiaDates,
+      reducedQuota: data.reducedQuota ?? null,
+      reducedQuotaReason: data.reducedQuotaReason,
       preferredPostId: data.preferredPostId ?? null,
       notes: data.notes,
     },

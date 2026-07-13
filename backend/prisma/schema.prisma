@@ -106,6 +106,10 @@ model Preference {
   // esos días (y el siguiente, por el descanso post-guardia) quedan bloqueados igual que unas vacaciones.
   hasOtherServiceGuardias  Boolean @default(false)
   otherServiceGuardiaDates String  @default("[]")
+  // El objetivo por defecto es el monthlyQuota del residente (normalmente 4). Si este
+  // mes va a hacer menos, lo declara aquí (debe ser menor que su objetivo habitual).
+  reducedQuota             Int?
+  reducedQuotaReason       String?
   preferredPostId          String?
   notes                    String?
 

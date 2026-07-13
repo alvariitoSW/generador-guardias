@@ -62,6 +62,21 @@ describe("generateSchedule", () => {
     }
   });
 
+  it("respects each resident's own quota when someone declares fewer guardias than the default", () => {
+    const residents = makeResidents(60, { monthlyQuota: 4 });
+    residents[0].monthlyQuota = 2; // ha declarado que este mes hace menos
+
+    const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
+    const counts = new Map<string, number>();
+    for (const a of result.assignments) {
+      counts.set(a.residentId, (counts.get(a.residentId) ?? 0) + 1);
+    }
+
+    expect(counts.get("r0") ?? 0).toBeLessThanOrEqual(2);
+    // el resto sigue pudiendo llegar a su objetivo habitual de 4
+    expect(Math.max(...Array.from(counts.entries()).filter(([id]) => id !== "r0").map(([, c]) => c))).toBe(4);
+  });
+
   it("respects vacations", () => {
     const residents = makeResidents(60);
     // r0 de vacaciones todo el mes

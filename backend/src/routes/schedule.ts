@@ -49,9 +49,13 @@ router.post("/generate", requireAuth, requireAdmin, async (req, res) => {
 
   const residentInputs: ResidentInput[] = residents.map((r) => {
     const pref = r.preferences[0];
+    // Por defecto, el objetivo es el monthlyQuota del residente (normalmente 4).
+    // Si ha declarado explícitamente que este mes hará menos, se usa ese número.
+    const effectiveQuota =
+      pref?.reducedQuota != null && pref.reducedQuota < r.monthlyQuota ? pref.reducedQuota : r.monthlyQuota;
     return {
       id: r.id,
-      monthlyQuota: r.monthlyQuota,
+      monthlyQuota: effectiveQuota,
       active: true,
       historicalCount: historicalMap.get(r.id) ?? 0,
       vacations: r.vacations

@@ -10,8 +10,10 @@ antes de publicarlo.
 
 - 4 puertas: **P1, P2, P3, P4**.
 - 2 residentes por puerta, de **lunes a viernes**.
-- Cada residente hace como máximo **4 guardias al mes** (configurable por
-  residente).
+- Todos hacen **4 guardias al mes por defecto**. Si un residente va a
+  hacer menos ese mes, tiene que declararlo él mismo en Preferencias
+  (cuántas y, opcionalmente, el motivo); si no dice nada, el objetivo
+  sigue siendo 4.
 - Se respetan las **vacaciones** (bloquean por completo) y las
   **preferencias** (días del mes preferidos —máx. 3—, días de la semana a
   evitar, puerta preferida).

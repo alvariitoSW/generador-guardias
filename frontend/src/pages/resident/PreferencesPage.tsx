@@ -3,6 +3,7 @@ import { api, apiErrorMessage } from "../../api/client";
 import type { Preference } from "../../api/types";
 import { WEEKDAY_LABELS } from "../../api/types";
 import { useServices } from "../../hooks/useServices";
+import { useMyResident } from "../../hooks/useMyResident";
 import { MonthPicker } from "../../components/MonthPicker";
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
@@ -18,10 +19,15 @@ function monthRange(year: number, month: number) {
 
 export function PreferencesPage() {
   const { services } = useServices();
+  const { resident } = useMyResident();
   const service = services[0]; // de momento solo Urgencias
+  const monthlyQuota = resident?.monthlyQuota ?? 4;
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
+  const [hasReducedQuota, setHasReducedQuota] = useState(false);
+  const [reducedQuota, setReducedQuota] = useState(0);
+  const [reducedQuotaReason, setReducedQuotaReason] = useState("");
   const [preferredDates, setPreferredDates] = useState<string[]>([]);
   const [newPreferredDate, setNewPreferredDate] = useState("");
   const [avoidWeekdays, setAvoidWeekdays] = useState<number[]>([]);
@@ -49,6 +55,9 @@ export function PreferencesPage() {
       .get<Preference | null>("/preferences", { params: { serviceId: service.id, year, month } })
       .then((res) => {
         const pref = res.data;
+        setHasReducedQuota(pref?.reducedQuota != null);
+        setReducedQuota(pref?.reducedQuota ?? Math.max(0, monthlyQuota - 1));
+        setReducedQuotaReason(pref?.reducedQuotaReason ?? "");
         setPreferredDates(pref?.preferredDates ?? []);
         setAvoidWeekdays(pref?.avoidWeekdays ?? []);
         setAvoidDates(pref?.avoidDates ?? []);
@@ -76,6 +85,8 @@ export function PreferencesPage() {
         serviceId: service.id,
         year,
         month,
+        reducedQuota: hasReducedQuota ? reducedQuota : null,
+        reducedQuotaReason: hasReducedQuota ? reducedQuotaReason : undefined,
         preferredDates,
         avoidWeekdays,
         avoidDates,
@@ -106,6 +117,47 @@ export function PreferencesPage() {
         <p className="text-slate-500">Cargando preferencias...</p>
       ) : (
         <div className="space-y-6 bg-white border border-slate-200 rounded-xl p-6">
+          <div className="border border-slate-200 rounded-md p-3">
+            <p className="text-sm text-slate-700 mb-2">
+              Tu objetivo este mes es <span className="font-semibold">{monthlyQuota} guardias</span>. Si vas a hacer
+              menos, indícalo aquí.
+            </p>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="has-reduced-quota"
+                checked={hasReducedQuota}
+                onChange={(e) => setHasReducedQuota(e.target.checked)}
+                className="mt-0.5"
+              />
+              <label htmlFor="has-reduced-quota" className="text-sm text-slate-700">
+                Este mes voy a hacer menos de {monthlyQuota} guardias
+              </label>
+            </div>
+            {hasReducedQuota && (
+              <div className="mt-3 pl-7 space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-slate-600">¿Cuántas?</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={Math.max(0, monthlyQuota - 1)}
+                    value={reducedQuota}
+                    onChange={(e) => setReducedQuota(Number(e.target.value))}
+                    className="w-20 border border-slate-300 rounded-md px-2 py-1 text-sm"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={reducedQuotaReason}
+                  onChange={(e) => setReducedQuotaReason(e.target.value)}
+                  placeholder="Motivo (opcional)"
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+          </div>
+
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md p-3">
             <input
               type="checkbox"
