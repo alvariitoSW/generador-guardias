@@ -7,7 +7,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, residencyYear?: number) => Promise<void>;
+  register: (email: string, password: string, rosterNameId: string, residencyYear?: number) => Promise<string>;
   logout: () => void;
 }
 
@@ -35,13 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (email: string, password: string, name: string, residencyYear?: number) => {
+    async (email: string, password: string, rosterNameId: string, residencyYear?: number) => {
       setLoading(true);
       try {
-        const { data } = await api.post("/auth/register", { email, password, name, residencyYear });
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        setUser(data.user);
+        const { data } = await api.post("/auth/register", { email, password, rosterNameId, residencyYear });
+        // El registro ya no inicia sesión: la cuenta queda pendiente de que un admin la active.
+        return data.message as string;
       } catch (err) {
         throw new Error(apiErrorMessage(err));
       } finally {

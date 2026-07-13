@@ -18,14 +18,25 @@ enum ScheduleStatus {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String      @id @default(cuid())
+  email        String      @unique
   passwordHash String
   name         String
-  role         Role      @default(RESIDENT)
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
+  role         Role        @default(RESIDENT)
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
   resident     Resident?
+  claimedName  RosterName?
+}
+
+// Lista de residentes reales que pueden "reclamar" su nombre al registrarse,
+// para que cada cuenta quede atada a una persona conocida y no a un nombre libre.
+model RosterName {
+  id              String   @id @default(cuid())
+  fullName        String   @unique
+  claimedByUserId String?  @unique
+  claimedBy       User?    @relation(fields: [claimedByUserId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
 }
 
 model Resident {
@@ -83,16 +94,20 @@ model Preference {
   month      Int // 1-12
 
   // JSON array de días de la semana a evitar, p.ej. "[1,3,5]" (Lun=1..Vie=5)
-  avoidWeekdays String @default("[]")
+  avoidWeekdays            String  @default("[]")
   // JSON array de fechas ISO concretas a evitar dentro del mes (motivos puntuales, no vacaciones)
-  avoidDates    String @default("[]")
+  avoidDates               String  @default("[]")
   // JSON array de fechas ISO concretas preferidas dentro del mes (máx. 3, se valida en la API)
-  preferredDates String @default("[]")
+  preferredDates           String  @default("[]")
   // Si el residente sale de guardia la noche del último día del mes anterior,
   // no se le puede asignar guardia el día 1 de este mes.
-  outgoingFirstDay Boolean @default(false)
-  preferredPostId  String?
-  notes            String?
+  outgoingFirstDay         Boolean @default(false)
+  // Guardias del servicio de origen del residente (fuera de Urgencias) este mes:
+  // esos días (y el siguiente, por el descanso post-guardia) quedan bloqueados igual que unas vacaciones.
+  hasOtherServiceGuardias  Boolean @default(false)
+  otherServiceGuardiaDates String  @default("[]")
+  preferredPostId          String?
+  notes                    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

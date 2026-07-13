@@ -25,6 +25,8 @@ const upsertSchema = z.object({
   avoidWeekdays: weekdayArray.default([]),
   avoidDates: dateArray.default([]),
   outgoingFirstDay: z.boolean().default(false),
+  hasOtherServiceGuardias: z.boolean().default(false),
+  otherServiceGuardiaDates: dateArray.default([]),
   preferredPostId: z.string().nullable().optional(),
   notes: z.string().optional(),
   residentId: z.string().optional(), // solo admin
@@ -55,6 +57,7 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
     preferredDates: JSON.parse(pref.preferredDates),
     avoidWeekdays: JSON.parse(pref.avoidWeekdays),
     avoidDates: JSON.parse(pref.avoidDates),
+    otherServiceGuardiaDates: JSON.parse(pref.otherServiceGuardiaDates),
   });
 });
 
@@ -70,6 +73,7 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
   const preferredDates = JSON.stringify(data.preferredDates);
   const avoidWeekdays = JSON.stringify(data.avoidWeekdays);
   const avoidDates = JSON.stringify(data.avoidDates);
+  const otherServiceGuardiaDates = JSON.stringify(data.otherServiceGuardiaDates);
 
   const pref = await prisma.preference.upsert({
     where: {
@@ -89,6 +93,8 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
       avoidWeekdays,
       avoidDates,
       outgoingFirstDay: data.outgoingFirstDay,
+      hasOtherServiceGuardias: data.hasOtherServiceGuardias,
+      otherServiceGuardiaDates,
       preferredPostId: data.preferredPostId ?? null,
       notes: data.notes,
     },
@@ -97,6 +103,8 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
       avoidWeekdays,
       avoidDates,
       outgoingFirstDay: data.outgoingFirstDay,
+      hasOtherServiceGuardias: data.hasOtherServiceGuardias,
+      otherServiceGuardiaDates,
       preferredPostId: data.preferredPostId ?? null,
       notes: data.notes,
     },
@@ -107,6 +115,7 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
     preferredDates: data.preferredDates,
     avoidWeekdays: data.avoidWeekdays,
     avoidDates: data.avoidDates,
+    otherServiceGuardiaDates: data.otherServiceGuardiaDates,
   });
 });
 

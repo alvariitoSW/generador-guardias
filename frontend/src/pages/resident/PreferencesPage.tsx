@@ -28,6 +28,9 @@ export function PreferencesPage() {
   const [avoidDates, setAvoidDates] = useState<string[]>([]);
   const [newAvoidDate, setNewAvoidDate] = useState("");
   const [outgoingFirstDay, setOutgoingFirstDay] = useState(false);
+  const [hasOtherServiceGuardias, setHasOtherServiceGuardias] = useState(false);
+  const [otherServiceGuardiaDates, setOtherServiceGuardiaDates] = useState<string[]>([]);
+  const [newOtherServiceDate, setNewOtherServiceDate] = useState("");
   const [preferredPostId, setPreferredPostId] = useState<string>("");
   const [notes, setNotes] = useState("");
 
@@ -50,6 +53,8 @@ export function PreferencesPage() {
         setAvoidWeekdays(pref?.avoidWeekdays ?? []);
         setAvoidDates(pref?.avoidDates ?? []);
         setOutgoingFirstDay(pref?.outgoingFirstDay ?? false);
+        setHasOtherServiceGuardias(pref?.hasOtherServiceGuardias ?? false);
+        setOtherServiceGuardiaDates(pref?.otherServiceGuardiaDates ?? []);
         setPreferredPostId(pref?.preferredPostId ?? "");
         setNotes(pref?.notes ?? "");
       })
@@ -75,6 +80,8 @@ export function PreferencesPage() {
         avoidWeekdays,
         avoidDates,
         outgoingFirstDay,
+        hasOtherServiceGuardias,
+        otherServiceGuardiaDates: hasOtherServiceGuardias ? otherServiceGuardiaDates : [],
         preferredPostId: preferredPostId || null,
         notes,
       });
@@ -114,6 +121,70 @@ export function PreferencesPage() {
                 Si el último día del mes anterior tienes guardia, márcalo para que no se te asigne guardia el día 1.
               </span>
             </label>
+          </div>
+
+          <div className="border border-slate-200 rounded-md p-3">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="has-other-service"
+                checked={hasOtherServiceGuardias}
+                onChange={(e) => setHasOtherServiceGuardias(e.target.checked)}
+                className="mt-0.5"
+              />
+              <label htmlFor="has-other-service" className="text-sm text-slate-700">
+                <span className="font-medium">Tengo guardias de mi servicio (aparte de Urgencias) este mes</span>
+                <br />
+                <span className="text-slate-500">
+                  Si tu especialidad también te pone de guardia, marca los días para que no se te asigne Urgencias
+                  esos días ni el siguiente (por el descanso post-guardia).
+                </span>
+              </label>
+            </div>
+
+            {hasOtherServiceGuardias && (
+              <div className="mt-3 pl-7">
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="date"
+                    value={newOtherServiceDate}
+                    min={monthMin}
+                    max={monthMax}
+                    onChange={(e) => setNewOtherServiceDate(e.target.value)}
+                    className="border border-slate-300 rounded-md px-3 py-2 text-sm"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newOtherServiceDate && !otherServiceGuardiaDates.includes(newOtherServiceDate)) {
+                        setOtherServiceGuardiaDates([...otherServiceGuardiaDates, newOtherServiceDate].sort());
+                        setNewOtherServiceDate("");
+                      }
+                    }}
+                    className="px-3 py-2 rounded-md border border-slate-300 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    Añadir
+                  </button>
+                </div>
+                {otherServiceGuardiaDates.length > 0 && (
+                  <ul className="flex flex-wrap gap-2">
+                    {otherServiceGuardiaDates.map((d) => (
+                      <li
+                        key={d}
+                        className="flex items-center gap-1 bg-amber-50 text-amber-700 text-sm px-2 py-1 rounded-md"
+                      >
+                        {d}
+                        <button
+                          onClick={() => setOtherServiceGuardiaDates(otherServiceGuardiaDates.filter((x) => x !== d))}
+                          className="text-amber-500 hover:text-red-600"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
 
           <div>

@@ -2,6 +2,20 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prismaClient";
 
+const RESIDENT_ROSTER = [
+  "Alejandro Rguez", "Simone", "Antonio C", "Sofia", "Faya", "Geneva", "Emilio Hdez",
+  "Alejandro Ramírez", "Sheila", "Marta D", "Miguel Liria", "Chema", "Patricia C",
+  "Cinthya", "Nerea H", "Aythami", "Coral", "Carmen R", "Navya", "Miriam Guerra",
+  "Rocio", "Marta S", "Alejandro Alemán", "Alejandro G", "Martín", "Alexia", "M Carmen",
+  "Paula Azn", "Nerea T", "Hadriel", "Isaac", "Gara", "Pedro", "Cristian Sarmiento",
+  "Javier Garcia", "Carla Santana", "Ines", "Paula León", "Claudia", "Erick García",
+  "Julia Rguez", "Gabriela", "Laura Manz", "Benjamin", "Jose Juan", "Victor", "Jose C M",
+  "Alberto C", "Esther", "Carlota M", "Miguel García", "Almudena", "Ana B", "Yael",
+  "Alberto de Galdo", "Anabel Gil", "Carolina Kozlowski", "Carlota Rguez", "Sarah Pérez",
+  "Maira Daza", "Isabel Medina", "Yeiko Suárez", "Cristian Santana", "Marta T",
+  "Jose Medina", "Marta Ceada", "Pepa", "Alejandro M", "Ana Hdez", "J Juan", "Laura Bernal",
+];
+
 async function main() {
   const service = await prisma.service.upsert({
     where: { name: "Urgencias" },
@@ -36,6 +50,17 @@ async function main() {
   } else {
     console.log("El usuario admin ya existía, no se ha modificado.");
   }
+
+  let created = 0;
+  for (const fullName of RESIDENT_ROSTER) {
+    const result = await prisma.rosterName.upsert({
+      where: { fullName },
+      create: { fullName },
+      update: {},
+    });
+    if (result.createdAt.getTime() > Date.now() - 5000) created++;
+  }
+  console.log(`Lista de residentes lista (${RESIDENT_ROSTER.length} nombres, ${created} nuevos).`);
 }
 
 main()

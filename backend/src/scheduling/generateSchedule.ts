@@ -1,4 +1,4 @@
-import { eachDayOfInterval, startOfMonth, endOfMonth, getDay, format } from "date-fns";
+import { eachDayOfInterval, startOfMonth, endOfMonth, getDay, format, addDays, subDays } from "date-fns";
 
 export interface PostInput {
   id: string;
@@ -19,6 +19,8 @@ export interface ResidentInput {
   preferredDates: string[];
   /** Si sale de guardia la noche del último día del mes anterior, no puede tener guardia el día 1 */
   outgoingFirstDay: boolean;
+  /** Fechas (ISO yyyy-MM-dd) en las que tiene guardia de su servicio de origen (fuera de Urgencias) */
+  otherServiceGuardiaDates: string[];
   preferredPostId?: string | null;
 }
 
@@ -70,6 +72,25 @@ function isOnVacation(resident: ResidentInput, date: Date): boolean {
 
 function isBlockedAsOutgoing(resident: ResidentInput, date: Date): boolean {
   return resident.outgoingFirstDay && date.getDate() === 1;
+}
+
+/** Tiene guardia de su servicio de origen ese día: no puede hacer también Urgencias ese día */
+function isOtherServiceGuardiaDay(resident: ResidentInput, date: Date): boolean {
+  return resident.otherServiceGuardiaDates.includes(toISODate(date));
+}
+
+/**
+ * Una guardia son 24h seguidas: quien tiene guardia el día D está de descanso
+ * (saliente) el día D+1 y no puede tener otra guardia, sea de Urgencias o de
+ * su servicio de origen.
+ */
+function isRestDay(resident: ResidentInput, date: Date, assignedDayKey: Set<string>): boolean {
+  const yesterday = subDays(date, 1);
+  if (isOtherServiceGuardiaDay(resident, yesterday)) return true;
+  if (assignedDayKey.has(`${resident.id}|${toISODate(yesterday)}`)) return true;
+  const tomorrow = addDays(date, 1);
+  if (assignedDayKey.has(`${resident.id}|${toISODate(tomorrow)}`)) return true;
+  return false;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -126,6 +147,8 @@ export function generateSchedule(input: GenerateScheduleInput): GenerateSchedule
       if (assignedDayKey.has(`${r.id}|${iso}`)) continue;
       if (isOnVacation(r, slot.day)) continue;
       if (isBlockedAsOutgoing(r, slot.day)) continue;
+      if (isOtherServiceGuardiaDay(r, slot.day)) continue;
+      if (isRestDay(r, slot.day, assignedDayKey)) continue;
 
       let score = 0;
       score -= 1000 * (assignedThisMonth.get(r.id) ?? 0); // reparto equitativo este mes (prioridad máxima)

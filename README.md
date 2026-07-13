@@ -13,8 +13,13 @@ antes de publicarlo.
 - Cada residente hace como máximo **4 guardias al mes** (configurable por
   residente).
 - Se respetan las **vacaciones** (bloquean por completo) y las
-  **preferencias** (días de la semana preferidos/a evitar, puerta
-  preferida, fechas puntuales a evitar).
+  **preferencias** (días del mes preferidos —máx. 3—, días de la semana a
+  evitar, puerta preferida).
+- **Descanso post-guardia (24h)**: nadie puede tener guardia el día
+  siguiente a otra guardia, ni de Urgencias ni de su servicio de origen
+  (los residentes pueden marcar si tienen guardias de su propio servicio
+  ese mes y qué días). El día 1 de mes se marca aparte con "salgo de
+  guardia el día 1", ya que el generador no ve el mes anterior.
 - El reparto es equitativo: prioriza a quien menos guardias lleva ese mes
   y, como desempate, a quien menos guardias acumula históricamente en el
   servicio. Pensado para escalar a 60+ residentes.
@@ -49,7 +54,7 @@ cd backend
 npm install
 cp .env.example .env   # ajusta DATABASE_URL, JWT_SECRET
 npx prisma migrate deploy
-npm run seed            # crea el servicio "Urgencias" (P1-P4) y un admin de prueba
+npm run seed            # crea "Urgencias" (P1-P4), un admin de prueba y la lista de residentes reclamable
 npm run dev              # http://localhost:4000
 ```
 
@@ -77,14 +82,18 @@ npm test                  # tests del algoritmo de generación de cuadrantes
 
 ## Flujo de uso
 
-1. El primer usuario que se registra se convierte automáticamente en
-   `ADMIN` (o usa el admin del seed).
-2. Los residentes se registran ellos mismos desde `/register`.
-3. Cada residente indica sus preferencias mensuales y vacaciones.
-4. El admin, desde "Cuadrante", genera el borrador del mes, revisa los
+1. El admin entra con la cuenta del seed (`admin@guardias.local`).
+2. Cada residente se registra en `/register` eligiendo su nombre de la
+   lista (no lo escribe libremente) y su propia contraseña. La cuenta
+   queda pendiente de activación.
+3. El admin activa las cuentas desde "Residentes" (ahí se ve un aviso con
+   nombre + email de cada registro pendiente) — opcionalmente también le
+   puede llegar un email si se configura SMTP (ver `DEPLOY.md`).
+4. Cada residente indica sus preferencias mensuales y vacaciones.
+5. El admin, desde "Cuadrante", genera el borrador del mes, revisa los
    huecos sin cubrir (si los hay), ajusta manualmente lo que haga falta y
    publica el cuadrante.
-5. Los residentes ven sus guardias publicadas en "Mi cuadrante".
+6. Los residentes ven sus guardias publicadas en "Mi cuadrante".
 
 ## Próximos pasos sugeridos
 

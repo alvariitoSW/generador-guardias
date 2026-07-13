@@ -19,6 +19,7 @@ function makeResidents(count: number, overrides: Partial<ResidentInput> = {}): R
     avoidDates: [],
     preferredDates: [],
     outgoingFirstDay: false,
+    otherServiceGuardiaDates: [],
     preferredPostId: null,
     ...overrides,
   }));
@@ -119,5 +120,36 @@ describe("generateSchedule", () => {
 
     const day1 = result.assignments.find((a) => a.date === "2026-07-01");
     expect(day1?.residentId).toBe("r0");
+  });
+
+  it("never assigns the same resident two calendar-adjacent days (24h rest rule)", () => {
+    const residents = makeResidents(60);
+    const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
+
+    const byResident = new Map<string, string[]>();
+    for (const a of result.assignments) {
+      byResident.set(a.residentId, [...(byResident.get(a.residentId) ?? []), a.date]);
+    }
+    for (const dates of byResident.values()) {
+      const sorted = [...dates].sort();
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = new Date(`${sorted[i - 1]}T00:00:00`);
+        const next = new Date(`${sorted[i]}T00:00:00`);
+        const diffDays = (next.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+        expect(diffDays).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it("blocks the day of and the day after an other-service guardia", () => {
+    const residents = makeResidents(60);
+    residents[0].otherServiceGuardiaDates = ["2026-07-15"];
+
+    const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
+    const r0Dates = result.assignments.filter((a) => a.residentId === "r0").map((a) => a.date);
+
+    expect(r0Dates).not.toContain("2026-07-15");
+    expect(r0Dates).not.toContain("2026-07-16");
+    expect(r0Dates.length).toBeGreaterThan(0);
   });
 });

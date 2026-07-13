@@ -61,6 +61,10 @@ router.post("/generate", requireAuth, requireAdmin, async (req, res) => {
       avoidDates: pref ? JSON.parse(pref.avoidDates) : [],
       preferredDates: pref ? JSON.parse(pref.preferredDates) : [],
       outgoingFirstDay: pref?.outgoingFirstDay ?? false,
+      otherServiceGuardiaDates:
+        pref?.hasOtherServiceGuardias && pref.otherServiceGuardiaDates
+          ? JSON.parse(pref.otherServiceGuardiaDates)
+          : [],
       preferredPostId: pref?.preferredPostId ?? null,
     };
   });

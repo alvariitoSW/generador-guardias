@@ -36,6 +36,29 @@ solo para que no te sorprenda):
 Si el botón falla o algo no encaja (nombre de servicio ya en uso,
 etc.), dime exactamente qué mensaje ves y lo resolvemos.
 
+## Cómo se registran los residentes
+
+Los residentes ya no escriben su nombre libremente: en `/register`
+eligen su nombre de una lista cerrada (la que me diste), ponen su email
+y su propia contraseña. La cuenta queda **pendiente** hasta que tú la
+actives desde "Residentes" en el panel de admin — ahí verás arriba un
+aviso con cada registro pendiente (nombre + email) para comprobar que
+es quien dice ser antes de activarla. No hace falta configurar nada
+para que esto funcione.
+
+Si además quieres que te llegue un email cada vez que alguien se
+registra (en vez de solo mirarlo en el panel), añade estas variables de
+entorno al servicio backend (en Render: pestaña **Environment** del
+servicio `generador-guardias-backend`):
+
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — datos
+  de un proveedor de email (por ejemplo Gmail con una "contraseña de
+  aplicación", o un servicio como Resend/Postmark).
+- `ADMIN_NOTIFY_EMAIL` — a qué dirección quieres que llegue el aviso.
+
+Es opcional; sin ello la app funciona igual, solo que el aviso se ve
+únicamente en el panel de admin.
+
 ## Opción manual: Railway + Vercel
 
 Si prefieres no depender de un único proveedor, o el plan gratuito de
@@ -107,8 +130,9 @@ Abre la URL pública (Render o Vercel, según la opción elegida) en el
 móvil o el ordenador:
 1. Inicia sesión con `admin@guardias.local` / `admin1234`.
 2. Ve a "Cuadrante" y genera el cuadrante de un mes.
-3. Abre una ventana en incógnito, entra en `/register` y crea una cuenta
-   de residente de prueba para ver cómo lo ve alguien de tu equipo.
+3. Abre una ventana en incógnito, entra en `/register`, elige un nombre
+   de la lista y crea una cuenta de prueba. Vuelve como admin a
+   "Residentes" y actívala para ver el flujo completo.
 
 Si algo falla (pantalla en blanco, error de login, etc.), dime qué
 mensaje ves y lo arreglamos.

@@ -47,8 +47,15 @@ export interface Preference {
   avoidWeekdays: number[];
   avoidDates: string[];
   outgoingFirstDay: boolean;
+  hasOtherServiceGuardias: boolean;
+  otherServiceGuardiaDates: string[];
   preferredPostId: string | null;
   notes?: string | null;
+}
+
+export interface RosterName {
+  id: string;
+  fullName: string;
 }
 
 export interface ShiftAssignment {

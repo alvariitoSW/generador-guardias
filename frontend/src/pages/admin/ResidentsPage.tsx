@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api, apiErrorMessage } from "../../api/client";
 import type { Resident } from "../../api/types";
 
@@ -31,6 +31,12 @@ export function ResidentsPage() {
     }
   }
 
+  const pending = useMemo(() => residents.filter((r) => !r.user.active), [residents]);
+  const sortedResidents = useMemo(
+    () => [...residents].sort((a, b) => Number(a.user.active) - Number(b.user.active)),
+    [residents]
+  );
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -39,6 +45,34 @@ export function ResidentsPage() {
       </div>
 
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
+      {!loading && pending.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-amber-900 mb-1">
+            {pending.length} cuenta{pending.length !== 1 ? "s" : ""} pendiente{pending.length !== 1 ? "s" : ""} de activar
+          </h2>
+          <p className="text-xs text-amber-700 mb-3">
+            Alguien se ha registrado eligiendo este nombre. Comprueba que coincide con la persona correcta antes de activarla.
+          </p>
+          <ul className="space-y-2">
+            {pending.map((r) => (
+              <li key={r.id} className="flex items-center justify-between bg-white border border-amber-200 rounded-lg px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">{r.user.name}</p>
+                  <p className="text-xs text-slate-500">{r.user.email}</p>
+                </div>
+                <button
+                  disabled={savingId === r.id}
+                  onClick={() => updateResident(r.id, { active: true })}
+                  className="text-xs font-medium bg-amber-500 text-white px-3 py-1.5 rounded-md hover:bg-amber-600 disabled:opacity-50"
+                >
+                  Activar cuenta
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-slate-500">Cargando...</p>
@@ -55,7 +89,7 @@ export function ResidentsPage() {
               </tr>
             </thead>
             <tbody>
-              {residents.map((r) => (
+              {sortedResidents.map((r) => (
                 <tr key={r.id} className="border-t border-slate-100">
                   <td className="px-4 py-2 text-slate-800">{r.user.name}</td>
                   <td className="px-4 py-2 text-slate-500">{r.user.email}</td>
@@ -90,10 +124,10 @@ export function ResidentsPage() {
                       disabled={savingId === r.id}
                       onClick={() => updateResident(r.id, { active: !r.user.active })}
                       className={`px-2 py-1 rounded-md text-xs font-medium ${
-                        r.user.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+                        r.user.active ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
                       }`}
                     >
-                      {r.user.active ? "Activo" : "Inactivo"}
+                      {r.user.active ? "Activo" : "Pendiente"}
                     </button>
                   </td>
                 </tr>
