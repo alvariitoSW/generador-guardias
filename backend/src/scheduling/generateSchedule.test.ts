@@ -15,9 +15,10 @@ function makeResidents(count: number, overrides: Partial<ResidentInput> = {}): R
     active: true,
     historicalCount: 0,
     vacations: [],
-    preferredWeekdays: [],
     avoidWeekdays: [],
     avoidDates: [],
+    preferredDates: [],
+    outgoingFirstDay: false,
     preferredPostId: null,
     ...overrides,
   }));
@@ -92,5 +93,31 @@ describe("generateSchedule", () => {
     const max = Math.max(...counts);
     const min = Math.min(...counts);
     expect(max - min).toBeLessThanOrEqual(1);
+  });
+
+  it("never assigns day 1 to a resident marked as outgoing from the previous month", () => {
+    const residents = makeResidents(60);
+    residents[0].outgoingFirstDay = true;
+
+    const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
+    const day1Assignments = result.assignments.filter((a) => a.residentId === "r0" && a.date === "2026-07-01");
+    expect(day1Assignments.length).toBe(0);
+    // el resto del mes sigue disponible para guardias
+    const otherAssignments = result.assignments.filter((a) => a.residentId === "r0");
+    expect(otherAssignments.length).toBeGreaterThan(0);
+  });
+
+  it("favors a resident's preferred dates over an equally-available colleague", () => {
+    // Ambos solo están disponibles el 1 de julio (el resto del mes de vacaciones),
+    // así que compiten por el único hueco de ese día; solo r0 lo prefiere.
+    const restOfMonthOff = { start: new Date(2026, 6, 2), end: new Date(2026, 6, 31) };
+    const residents = makeResidents(2, { monthlyQuota: 10, vacations: [restOfMonthOff] });
+    residents[0].preferredDates = ["2026-07-01"];
+
+    const onePost = [{ id: "p1", slotsPerDay: 1 }];
+    const result = generateSchedule({ year: 2026, month: 7, posts: onePost, residents });
+
+    const day1 = result.assignments.find((a) => a.date === "2026-07-01");
+    expect(day1?.residentId).toBe("r0");
   });
 });

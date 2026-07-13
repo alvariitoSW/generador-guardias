@@ -12,11 +12,13 @@ export interface ResidentInput {
   /** Nº de guardias ya realizadas en este servicio en meses anteriores (para repartir a largo plazo) */
   historicalCount: number;
   vacations: { start: Date; end: Date }[];
-  /** Días de la semana preferidos, 1=Lunes .. 5=Viernes */
-  preferredWeekdays: number[];
   avoidWeekdays: number[];
   /** Fechas concretas (ISO yyyy-MM-dd) a evitar dentro del mes */
   avoidDates: string[];
+  /** Fechas concretas (ISO yyyy-MM-dd) preferidas dentro del mes (normalmente hasta 3) */
+  preferredDates: string[];
+  /** Si sale de guardia la noche del último día del mes anterior, no puede tener guardia el día 1 */
+  outgoingFirstDay: boolean;
   preferredPostId?: string | null;
 }
 
@@ -64,6 +66,10 @@ export function getWorkingDays(year: number, month: number): Date[] {
 
 function isOnVacation(resident: ResidentInput, date: Date): boolean {
   return resident.vacations.some((v) => date >= v.start && date <= v.end);
+}
+
+function isBlockedAsOutgoing(resident: ResidentInput, date: Date): boolean {
+  return resident.outgoingFirstDay && date.getDate() === 1;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -119,11 +125,12 @@ export function generateSchedule(input: GenerateScheduleInput): GenerateSchedule
       if ((assignedThisMonth.get(r.id) ?? 0) >= r.monthlyQuota) continue;
       if (assignedDayKey.has(`${r.id}|${iso}`)) continue;
       if (isOnVacation(r, slot.day)) continue;
+      if (isBlockedAsOutgoing(r, slot.day)) continue;
 
       let score = 0;
       score -= 1000 * (assignedThisMonth.get(r.id) ?? 0); // reparto equitativo este mes (prioridad máxima)
       score -= 5 * r.historicalCount; // reparto a largo plazo entre meses
-      if (r.preferredWeekdays.includes(wd)) score += 30;
+      if (r.preferredDates.includes(iso)) score += 30;
       if (r.avoidWeekdays.includes(wd)) score -= 20;
       if (r.avoidDates.includes(iso)) score -= 40;
       if (r.preferredPostId && r.preferredPostId === slot.postId) score += 15;

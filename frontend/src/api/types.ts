@@ -43,9 +43,10 @@ export interface Preference {
   serviceId: string;
   year: number;
   month: number;
-  preferredWeekdays: number[];
+  preferredDates: string[];
   avoidWeekdays: number[];
   avoidDates: string[];
+  outgoingFirstDay: boolean;
   preferredPostId: string | null;
   notes?: string | null;
 }

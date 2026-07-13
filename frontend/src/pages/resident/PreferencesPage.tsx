@@ -6,8 +6,15 @@ import { useServices } from "../../hooks/useServices";
 import { MonthPicker } from "../../components/MonthPicker";
 
 const WEEKDAYS = [1, 2, 3, 4, 5];
+const MAX_PREFERRED_DATES = 3;
 
 const today = new Date();
+
+function monthRange(year: number, month: number) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const last = new Date(year, month, 0).getDate();
+  return { min: `${year}-${pad(month)}-01`, max: `${year}-${pad(month)}-${pad(last)}` };
+}
 
 export function PreferencesPage() {
   const { services } = useServices();
@@ -15,10 +22,12 @@ export function PreferencesPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
 
-  const [preferredWeekdays, setPreferredWeekdays] = useState<number[]>([]);
+  const [preferredDates, setPreferredDates] = useState<string[]>([]);
+  const [newPreferredDate, setNewPreferredDate] = useState("");
   const [avoidWeekdays, setAvoidWeekdays] = useState<number[]>([]);
   const [avoidDates, setAvoidDates] = useState<string[]>([]);
   const [newAvoidDate, setNewAvoidDate] = useState("");
+  const [outgoingFirstDay, setOutgoingFirstDay] = useState(false);
   const [preferredPostId, setPreferredPostId] = useState<string>("");
   const [notes, setNotes] = useState("");
 
@@ -26,6 +35,8 @@ export function PreferencesPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const { min: monthMin, max: monthMax } = monthRange(year, month);
 
   useEffect(() => {
     if (!service) return;
@@ -35,9 +46,10 @@ export function PreferencesPage() {
       .get<Preference | null>("/preferences", { params: { serviceId: service.id, year, month } })
       .then((res) => {
         const pref = res.data;
-        setPreferredWeekdays(pref?.preferredWeekdays ?? []);
+        setPreferredDates(pref?.preferredDates ?? []);
         setAvoidWeekdays(pref?.avoidWeekdays ?? []);
         setAvoidDates(pref?.avoidDates ?? []);
+        setOutgoingFirstDay(pref?.outgoingFirstDay ?? false);
         setPreferredPostId(pref?.preferredPostId ?? "");
         setNotes(pref?.notes ?? "");
       })
@@ -59,9 +71,10 @@ export function PreferencesPage() {
         serviceId: service.id,
         year,
         month,
-        preferredWeekdays,
+        preferredDates,
         avoidWeekdays,
         avoidDates,
+        outgoingFirstDay,
         preferredPostId: preferredPostId || null,
         notes,
       });
@@ -86,23 +99,77 @@ export function PreferencesPage() {
         <p className="text-slate-500">Cargando preferencias...</p>
       ) : (
         <div className="space-y-6 bg-white border border-slate-200 rounded-xl p-6">
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-md p-3">
+            <input
+              type="checkbox"
+              id="outgoing-first-day"
+              checked={outgoingFirstDay}
+              onChange={(e) => setOutgoingFirstDay(e.target.checked)}
+              className="mt-0.5"
+            />
+            <label htmlFor="outgoing-first-day" className="text-sm text-amber-900">
+              <span className="font-medium">Salgo de guardia el día 1 de este mes</span>
+              <br />
+              <span className="text-amber-700">
+                Si el último día del mes anterior tienes guardia, márcalo para que no se te asigne guardia el día 1.
+              </span>
+            </label>
+          </div>
+
           <div>
-            <h2 className="text-sm font-medium text-slate-700 mb-2">Días de la semana preferidos</h2>
-            <div className="flex gap-2 flex-wrap">
-              {WEEKDAYS.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => toggle(preferredWeekdays, setPreferredWeekdays, d)}
-                  className={`px-3 py-1.5 rounded-md text-sm border ${
-                    preferredWeekdays.includes(d)
-                      ? "bg-emerald-600 text-white border-emerald-600"
-                      : "border-slate-300 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {WEEKDAY_LABELS[d]}
-                </button>
-              ))}
+            <h2 className="text-sm font-medium text-slate-700 mb-2">
+              Días del mes preferidos (máximo {MAX_PREFERRED_DATES})
+            </h2>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="date"
+                value={newPreferredDate}
+                min={monthMin}
+                max={monthMax}
+                onChange={(e) => setNewPreferredDate(e.target.value)}
+                disabled={preferredDates.length >= MAX_PREFERRED_DATES}
+                className="border border-slate-300 rounded-md px-3 py-2 text-sm disabled:opacity-50"
+              />
+              <button
+                onClick={() => {
+                  if (
+                    newPreferredDate &&
+                    !preferredDates.includes(newPreferredDate) &&
+                    preferredDates.length < MAX_PREFERRED_DATES
+                  ) {
+                    setPreferredDates([...preferredDates, newPreferredDate].sort());
+                    setNewPreferredDate("");
+                  }
+                }}
+                disabled={preferredDates.length >= MAX_PREFERRED_DATES}
+                className="px-3 py-2 rounded-md border border-slate-300 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Añadir
+              </button>
             </div>
+            {preferredDates.length >= MAX_PREFERRED_DATES && (
+              <p className="text-xs text-slate-500 mb-2">
+                Ya has elegido el máximo de {MAX_PREFERRED_DATES} días. Quita alguno para cambiarlo.
+              </p>
+            )}
+            {preferredDates.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {preferredDates.map((d) => (
+                  <li
+                    key={d}
+                    className="flex items-center gap-1 bg-emerald-50 text-emerald-700 text-sm px-2 py-1 rounded-md"
+                  >
+                    {d}
+                    <button
+                      onClick={() => setPreferredDates(preferredDates.filter((x) => x !== d))}
+                      className="text-emerald-500 hover:text-red-600"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div>
@@ -148,6 +215,8 @@ export function PreferencesPage() {
               <input
                 type="date"
                 value={newAvoidDate}
+                min={monthMin}
+                max={monthMax}
                 onChange={(e) => setNewAvoidDate(e.target.value)}
                 className="border border-slate-300 rounded-md px-3 py-2 text-sm"
               />

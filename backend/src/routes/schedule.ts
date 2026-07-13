@@ -57,9 +57,10 @@ router.post("/generate", requireAuth, requireAdmin, async (req, res) => {
       vacations: r.vacations
         .filter((v) => v.startDate <= monthEnd && v.endDate >= monthStart)
         .map((v) => ({ start: v.startDate, end: v.endDate })),
-      preferredWeekdays: pref ? JSON.parse(pref.preferredWeekdays) : [],
       avoidWeekdays: pref ? JSON.parse(pref.avoidWeekdays) : [],
       avoidDates: pref ? JSON.parse(pref.avoidDates) : [],
+      preferredDates: pref ? JSON.parse(pref.preferredDates) : [],
+      outgoingFirstDay: pref?.outgoingFirstDay ?? false,
       preferredPostId: pref?.preferredPostId ?? null,
     };
   });

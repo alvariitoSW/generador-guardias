@@ -15,14 +15,16 @@ async function getResidentIdForRequest(req: AuthRequest, requestedResidentId?: s
 
 const weekdayArray = z.array(z.number().int().min(1).max(5)); // 1=Lunes ... 5=Viernes
 const dateArray = z.array(z.string());
+const preferredDatesArray = dateArray.max(3, "Como máximo puedes elegir 3 días preferidos");
 
 const upsertSchema = z.object({
   serviceId: z.string(),
   year: z.number().int().min(2020).max(2100),
   month: z.number().int().min(1).max(12),
-  preferredWeekdays: weekdayArray.default([]),
+  preferredDates: preferredDatesArray.default([]),
   avoidWeekdays: weekdayArray.default([]),
   avoidDates: dateArray.default([]),
+  outgoingFirstDay: z.boolean().default(false),
   preferredPostId: z.string().nullable().optional(),
   notes: z.string().optional(),
   residentId: z.string().optional(), // solo admin
@@ -50,7 +52,7 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
 
   return res.json({
     ...pref,
-    preferredWeekdays: JSON.parse(pref.preferredWeekdays),
+    preferredDates: JSON.parse(pref.preferredDates),
     avoidWeekdays: JSON.parse(pref.avoidWeekdays),
     avoidDates: JSON.parse(pref.avoidDates),
   });
@@ -65,7 +67,7 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
   const residentId = await getResidentIdForRequest(req, data.residentId);
   if (!residentId) return res.status(404).json({ error: "No tienes perfil de residente" });
 
-  const preferredWeekdays = JSON.stringify(data.preferredWeekdays);
+  const preferredDates = JSON.stringify(data.preferredDates);
   const avoidWeekdays = JSON.stringify(data.avoidWeekdays);
   const avoidDates = JSON.stringify(data.avoidDates);
 
@@ -83,16 +85,18 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
       serviceId: data.serviceId,
       year: data.year,
       month: data.month,
-      preferredWeekdays,
+      preferredDates,
       avoidWeekdays,
       avoidDates,
+      outgoingFirstDay: data.outgoingFirstDay,
       preferredPostId: data.preferredPostId ?? null,
       notes: data.notes,
     },
     update: {
-      preferredWeekdays,
+      preferredDates,
       avoidWeekdays,
       avoidDates,
+      outgoingFirstDay: data.outgoingFirstDay,
       preferredPostId: data.preferredPostId ?? null,
       notes: data.notes,
     },
@@ -100,7 +104,7 @@ router.put("/", requireAuth, async (req: AuthRequest, res) => {
 
   return res.json({
     ...pref,
-    preferredWeekdays: data.preferredWeekdays,
+    preferredDates: data.preferredDates,
     avoidWeekdays: data.avoidWeekdays,
     avoidDates: data.avoidDates,
   });

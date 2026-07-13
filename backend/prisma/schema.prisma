@@ -82,13 +82,17 @@ model Preference {
   year       Int
   month      Int // 1-12
 
-  // JSON arrays serializados como texto, p.ej. "[1,3,5]" (Lun=1..Vie=5)
-  preferredWeekdays String @default("[]")
-  avoidWeekdays     String @default("[]")
+  // JSON array de días de la semana a evitar, p.ej. "[1,3,5]" (Lun=1..Vie=5)
+  avoidWeekdays String @default("[]")
   // JSON array de fechas ISO concretas a evitar dentro del mes (motivos puntuales, no vacaciones)
-  avoidDates        String @default("[]")
-  preferredPostId   String?
-  notes             String?
+  avoidDates    String @default("[]")
+  // JSON array de fechas ISO concretas preferidas dentro del mes (máx. 3, se valida en la API)
+  preferredDates String @default("[]")
+  // Si el residente sale de guardia la noche del último día del mes anterior,
+  // no se le puede asignar guardia el día 1 de este mes.
+  outgoingFirstDay Boolean @default(false)
+  preferredPostId  String?
+  notes            String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
