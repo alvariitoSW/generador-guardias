@@ -18,10 +18,13 @@ antes de publicarlo.
   **preferencias** (días del mes preferidos —máx. 3—, días de la semana a
   evitar, puerta preferida).
 - **Descanso post-guardia (24h)**: nadie puede tener guardia el día
-  siguiente a otra guardia, ni de Urgencias ni de su servicio de origen
-  (los residentes pueden marcar si tienen guardias de su propio servicio
-  ese mes y qué días). El día 1 de mes se marca aparte con "salgo de
-  guardia el día 1", ya que el generador no ve el mes anterior.
+  siguiente a otra guardia de Urgencias. El día 1 de mes se marca aparte
+  con "salgo de guardia el día 1", ya que el generador no ve el mes
+  anterior.
+- **Guardias del servicio de origen**: los residentes pueden marcar si
+  tienen guardias de su propia especialidad ese mes y qué días. Se exige
+  un margen mínimo de 4 días (en cualquier dirección) entre una de esas
+  guardias y una de Urgencias.
 - El reparto es equitativo: prioriza a quien menos guardias lleva ese mes
   y, como desempate, a quien menos guardias acumula históricamente en el
   servicio. Pensado para escalar a 60+ residentes.
@@ -96,6 +99,12 @@ npm test                  # tests del algoritmo de generación de cuadrantes
    huecos sin cubrir (si los hay), ajusta manualmente lo que haga falta y
    publica el cuadrante.
 6. Los residentes ven sus guardias publicadas en "Mi cuadrante".
+7. Si alguien quiere cambiar una guardia ya publicada, la pide desde
+   "Cambios": queda visible para todos por si otro residente quiere
+   cambiarla con él (con o sin ofrecer una guardia suya a cambio). El
+   cambio solo se aplica si sigue cumpliendo las reglas (descanso de 24h,
+   vacaciones, margen con guardias de otro servicio, cuota mensual);
+   si no, se rechaza con el motivo.
 
 ## Próximos pasos sugeridos
 

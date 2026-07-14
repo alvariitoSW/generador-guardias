@@ -1,4 +1,21 @@
-import { eachDayOfInterval, startOfMonth, endOfMonth, getDay, format, addDays, subDays } from "date-fns";
+import {
+  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
+  getDay,
+  format,
+  addDays,
+  subDays,
+  differenceInCalendarDays,
+} from "date-fns";
+
+/**
+ * Separación mínima (en días, en cualquier dirección) entre una guardia de
+ * Urgencias y una guardia del servicio de origen del residente. Son guardias
+ * de 24h y hace falta más margen que el descanso de un día entre guardias de
+ * Urgencias consecutivas.
+ */
+export const OTHER_SERVICE_MIN_GAP_DAYS = 4;
 
 export interface PostInput {
   id: string;
@@ -74,19 +91,25 @@ function isBlockedAsOutgoing(resident: ResidentInput, date: Date): boolean {
   return resident.outgoingFirstDay && date.getDate() === 1;
 }
 
-/** Tiene guardia de su servicio de origen ese día: no puede hacer también Urgencias ese día */
-function isOtherServiceGuardiaDay(resident: ResidentInput, date: Date): boolean {
-  return resident.otherServiceGuardiaDates.includes(toISODate(date));
+/**
+ * Demasiado cerca de una guardia de su servicio de origen (en cualquier
+ * dirección): hace falta un margen de OTHER_SERVICE_MIN_GAP_DAYS días entre
+ * una guardia de Urgencias y una de su propio servicio.
+ */
+function isTooCloseToOtherServiceGuardia(resident: ResidentInput, date: Date): boolean {
+  return resident.otherServiceGuardiaDates.some((iso) => {
+    const otherDate = new Date(`${iso}T00:00:00`);
+    return Math.abs(differenceInCalendarDays(date, otherDate)) < OTHER_SERVICE_MIN_GAP_DAYS;
+  });
 }
 
 /**
- * Una guardia son 24h seguidas: quien tiene guardia el día D está de descanso
- * (saliente) el día D+1 y no puede tener otra guardia, sea de Urgencias o de
- * su servicio de origen.
+ * Una guardia de Urgencias son 24h seguidas: quien tiene guardia el día D
+ * está de descanso (saliente) el día D+1 y no puede tener otra guardia de
+ * Urgencias justo antes o después.
  */
 function isRestDay(resident: ResidentInput, date: Date, assignedDayKey: Set<string>): boolean {
   const yesterday = subDays(date, 1);
-  if (isOtherServiceGuardiaDay(resident, yesterday)) return true;
   if (assignedDayKey.has(`${resident.id}|${toISODate(yesterday)}`)) return true;
   const tomorrow = addDays(date, 1);
   if (assignedDayKey.has(`${resident.id}|${toISODate(tomorrow)}`)) return true;
@@ -147,7 +170,7 @@ export function generateSchedule(input: GenerateScheduleInput): GenerateSchedule
       if (assignedDayKey.has(`${r.id}|${iso}`)) continue;
       if (isOnVacation(r, slot.day)) continue;
       if (isBlockedAsOutgoing(r, slot.day)) continue;
-      if (isOtherServiceGuardiaDay(r, slot.day)) continue;
+      if (isTooCloseToOtherServiceGuardia(r, slot.day)) continue;
       if (isRestDay(r, slot.day, assignedDayKey)) continue;
 
       let score = 0;

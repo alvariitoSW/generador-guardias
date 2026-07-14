@@ -8,6 +8,7 @@ import preferenceRoutes from "./routes/preferences";
 import serviceRoutes from "./routes/services";
 import scheduleRoutes from "./routes/schedule";
 import rosterRoutes from "./routes/roster";
+import swapRoutes from "./routes/swaps";
 
 const app = express();
 // En producción, define CORS_ORIGIN con la URL del frontend desplegado
@@ -25,6 +26,7 @@ app.use("/api/preferences", preferenceRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/roster", rosterRoutes);
+app.use("/api/swaps", swapRoutes);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 app.listen(PORT, () => {

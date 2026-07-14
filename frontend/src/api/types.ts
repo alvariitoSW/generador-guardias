@@ -81,6 +81,30 @@ export interface ScheduleMonth {
   assignments: ShiftAssignment[];
 }
 
+export interface SwapOffer {
+  id: string;
+  swapRequestId: string;
+  offererId: string;
+  offerer: { user: { name: string } };
+  offeredAssignmentId: string | null;
+  offeredAssignment: ShiftAssignment | null;
+  note: string | null;
+  status: "PENDING" | "ACCEPTED" | "DECLINED";
+  createdAt: string;
+}
+
+export interface SwapRequest {
+  id: string;
+  assignmentId: string;
+  assignment: ShiftAssignment;
+  requesterId: string;
+  requester?: { user: { name: string } };
+  note: string | null;
+  status: "OPEN" | "ACCEPTED" | "CANCELLED";
+  createdAt: string;
+  offers: SwapOffer[];
+}
+
 export const WEEKDAY_LABELS: Record<number, string> = {
   1: "Lunes",
   2: "Martes",

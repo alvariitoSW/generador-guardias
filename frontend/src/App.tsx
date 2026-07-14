@@ -7,6 +7,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { PreferencesPage } from "./pages/resident/PreferencesPage";
 import { VacationsPage } from "./pages/resident/VacationsPage";
 import { MySchedulePage } from "./pages/resident/MySchedulePage";
+import { SwapsPage } from "./pages/resident/SwapsPage";
 import { ResidentsPage } from "./pages/admin/ResidentsPage";
 import { ScheduleAdminPage } from "./pages/admin/ScheduleAdminPage";
 
@@ -45,6 +46,14 @@ export default function App() {
             element={
               <ProtectedRoute role="RESIDENT">
                 <VacationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cambios"
+            element={
+              <ProtectedRoute role="RESIDENT">
+                <SwapsPage />
               </ProtectedRoute>
             }
           />

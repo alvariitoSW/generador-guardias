@@ -27,6 +27,9 @@ export function Layout() {
                   <NavLink to="/vacaciones" className={linkClass}>
                     Vacaciones
                   </NavLink>
+                  <NavLink to="/cambios" className={linkClass}>
+                    Cambios
+                  </NavLink>
                 </>
               )}
               {user?.role === "ADMIN" && (

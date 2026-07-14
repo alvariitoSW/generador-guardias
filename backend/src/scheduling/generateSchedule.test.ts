@@ -156,15 +156,36 @@ describe("generateSchedule", () => {
     }
   });
 
-  it("blocks the day of and the day after an other-service guardia", () => {
+  it("keeps a minimum 4-day gap around a guardia of the resident's other service", () => {
     const residents = makeResidents(60);
-    residents[0].otherServiceGuardiaDates = ["2026-07-15"];
+    // 2026-07-13 es lunes; el hueco bloqueado (diferencia < 4 días) va del 10 al 16 de julio.
+    residents[0].otherServiceGuardiaDates = ["2026-07-13"];
 
     const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
     const r0Dates = result.assignments.filter((a) => a.residentId === "r0").map((a) => a.date);
 
-    expect(r0Dates).not.toContain("2026-07-15");
-    expect(r0Dates).not.toContain("2026-07-16");
+    for (const blocked of ["2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16"]) {
+      expect(r0Dates).not.toContain(blocked);
+    }
     expect(r0Dates.length).toBeGreaterThan(0);
+  });
+
+  it("allows a guardia exactly at the minimum gap boundary (4 days away)", () => {
+    // Solo disponible el 2026-07-09 (diferencia exacta de 4 días respecto al
+    // 2026-07-13, el resto del mes bloqueado por vacaciones): si el hueco se
+    // cubre es porque el margen de 4 días sí lo permite.
+    const vacations = [
+      { start: new Date(2026, 6, 1), end: new Date(2026, 6, 8) },
+      { start: new Date(2026, 6, 10), end: new Date(2026, 6, 31) },
+    ];
+    const residents = makeResidents(1, { monthlyQuota: 10, vacations });
+    residents[0].otherServiceGuardiaDates = ["2026-07-13"];
+
+    const onePost = [{ id: "p1", slotsPerDay: 1 }];
+    const result = generateSchedule({ year: 2026, month: 7, posts: onePost, residents });
+
+    const day9 = result.assignments.find((a) => a.date === "2026-07-09");
+    expect(day9?.residentId).toBe("r0");
+    expect(result.assignments.length).toBe(1);
   });
 });

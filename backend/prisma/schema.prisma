@@ -17,6 +17,18 @@ enum ScheduleStatus {
   PUBLISHED
 }
 
+enum SwapRequestStatus {
+  OPEN
+  ACCEPTED
+  CANCELLED
+}
+
+enum SwapOfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 model User {
   id           String      @id @default(cuid())
   email        String      @unique
@@ -48,9 +60,11 @@ model Resident {
   monthlyQuota  Int      @default(4)
   createdAt     DateTime @default(now())
 
-  vacations   Vacation[]
-  preferences Preference[]
-  assignments ShiftAssignment[]
+  vacations        Vacation[]
+  preferences      Preference[]
+  assignments      ShiftAssignment[]
+  swapRequestsMade SwapRequest[]
+  swapOffersMade   SwapOffer[]
 }
 
 model Service {
@@ -103,7 +117,8 @@ model Preference {
   // no se le puede asignar guardia el día 1 de este mes.
   outgoingFirstDay         Boolean @default(false)
   // Guardias del servicio de origen del residente (fuera de Urgencias) este mes:
-  // esos días (y el siguiente, por el descanso post-guardia) quedan bloqueados igual que unas vacaciones.
+  // se exige un margen mínimo de OTHER_SERVICE_MIN_GAP_DAYS días (por defecto 4)
+  // entre cada una de estas fechas y cualquier guardia de Urgencias.
   hasOtherServiceGuardias  Boolean @default(false)
   otherServiceGuardiaDates String  @default("[]")
   // El objetivo por defecto es el monthlyQuota del residente (normalmente 4). Si este
@@ -146,5 +161,43 @@ model ShiftAssignment {
   date            DateTime
   createdAt       DateTime      @default(now())
 
+  swapRequests    SwapRequest[]
+  offeredInOffers SwapOffer[]
+
   @@unique([postId, date, residentId])
+}
+
+// Un residente pide cambiar una de sus guardias ya publicadas. Queda visible
+// para todos los demás por si alguien quiere ofrecerse (con o sin una guardia
+// suya a cambio). Solo puede haber una solicitud OPEN a la vez por guardia
+// (se comprueba en la API, no con una restricción única, para poder volver a
+// pedirlo tras cancelar una solicitud anterior).
+model SwapRequest {
+  id           String            @id @default(cuid())
+  assignmentId String
+  assignment   ShiftAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  requesterId  String
+  requester    Resident          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  note         String?
+  status       SwapRequestStatus @default(OPEN)
+  createdAt    DateTime          @default(now())
+  resolvedAt   DateTime?
+
+  offers SwapOffer[]
+}
+
+// Respuesta de otro residente a una solicitud de cambio: puede ofrecer una de
+// sus propias guardias a cambio, o simplemente quedarse con la guardia sin
+// dar nada (offeredAssignmentId = null).
+model SwapOffer {
+  id                  String           @id @default(cuid())
+  swapRequestId       String
+  swapRequest         SwapRequest      @relation(fields: [swapRequestId], references: [id], onDelete: Cascade)
+  offererId           String
+  offerer             Resident         @relation(fields: [offererId], references: [id], onDelete: Cascade)
+  offeredAssignmentId String?
+  offeredAssignment   ShiftAssignment? @relation(fields: [offeredAssignmentId], references: [id], onDelete: SetNull)
+  note                String?
+  status              SwapOfferStatus  @default(PENDING)
+  createdAt           DateTime         @default(now())
 }
