@@ -169,7 +169,14 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
   if (req.auth!.role === "ADMIN") {
     return res.json({ ...scheduleMonth, approvalStatus: await buildApprovalStatus(scheduleMonth.id) });
   }
-  return res.json(scheduleMonth);
+
+  // Un residente solo debe ver sus propias guardias, nunca las de otros compañeros
+  // (por ejemplo, tras un cambio de guardia, cada uno ve la suya, no la ajena).
+  const me = await prisma.resident.findUnique({ where: { userId: req.auth!.userId }, select: { id: true } });
+  return res.json({
+    ...scheduleMonth,
+    assignments: scheduleMonth.assignments.filter((a) => a.residentId === me?.id),
+  });
 });
 
 const editSchema = z.object({ residentId: z.string() });
