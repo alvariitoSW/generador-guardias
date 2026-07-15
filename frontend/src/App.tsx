@@ -10,6 +10,7 @@ import { MySchedulePage } from "./pages/resident/MySchedulePage";
 import { SwapsPage } from "./pages/resident/SwapsPage";
 import { ResidentsPage } from "./pages/admin/ResidentsPage";
 import { ScheduleAdminPage } from "./pages/admin/ScheduleAdminPage";
+import { AccountPage } from "./pages/admin/AccountPage";
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -70,6 +71,14 @@ export default function App() {
             element={
               <ProtectedRoute role="ADMIN">
                 <ScheduleAdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/cuenta"
+            element={
+              <ProtectedRoute role="ADMIN">
+                <AccountPage />
               </ProtectedRoute>
             }
           />

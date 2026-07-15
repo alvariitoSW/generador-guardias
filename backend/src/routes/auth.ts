@@ -124,4 +124,59 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
   });
 });
 
+const updateMeSchema = z.object({
+  name: z.string().min(1, "El nombre no puede estar vacío").optional(),
+  email: z.string().email().optional(),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(8, "La nueva contraseña debe tener al menos 8 caracteres").optional(),
+});
+
+// Cada cuenta puede editar sus propios datos. Los residentes mantienen su nombre
+// fijo (viene de haber reclamado su nombre real de la lista): solo pueden cambiar
+// email y contraseña. Cambiar email o contraseña exige confirmar la contraseña actual.
+router.patch("/me", requireAuth, async (req: AuthRequest, res) => {
+  const parsed = updateMeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  const { name, email, currentPassword, newPassword } = parsed.data;
+
+  const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
+  if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+  if (name !== undefined && user.role !== "ADMIN") {
+    return res.status(403).json({ error: "Tu nombre está ligado al residente que reclamaste al registrarte y no se puede cambiar" });
+  }
+
+  const wantsEmailChange = email !== undefined && email !== user.email;
+  const wantsPasswordChange = newPassword !== undefined;
+  if (wantsEmailChange || wantsPasswordChange) {
+    if (!currentPassword) {
+      return res.status(400).json({ error: "Introduce tu contraseña actual para confirmar el cambio" });
+    }
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) return res.status(401).json({ error: "La contraseña actual no es correcta" });
+  }
+
+  if (wantsEmailChange) {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return res.status(409).json({ error: "Ya existe una cuenta con ese email" });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      ...(name !== undefined ? { name } : {}),
+      ...(wantsEmailChange ? { email } : {}),
+      ...(wantsPasswordChange ? { passwordHash: await bcrypt.hash(newPassword!, 10) } : {}),
+    },
+  });
+
+  return res.json({
+    id: updated.id,
+    email: updated.email,
+    name: updated.name,
+    role: updated.role,
+    isPrimaryAdmin: updated.isPrimaryAdmin,
+  });
+});
+
 export default router;

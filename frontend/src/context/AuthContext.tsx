@@ -3,11 +3,19 @@ import type { ReactNode } from "react";
 import { api, apiErrorMessage } from "../api/client";
 import type { User } from "../api/types";
 
+export interface UpdateMeInput {
+  name?: string;
+  email?: string;
+  currentPassword?: string;
+  newPassword?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, rosterNameId: string, residencyYear?: number) => Promise<string>;
+  updateMe: (input: UpdateMeInput) => Promise<void>;
   logout: () => void;
 }
 
@@ -50,6 +58,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const updateMe = useCallback(async (input: UpdateMeInput) => {
+    setLoading(true);
+    try {
+      const { data } = await api.patch("/auth/me", input);
+      const nextUser = { ...data };
+      localStorage.setItem("user", JSON.stringify(nextUser));
+      setUser(nextUser);
+    } catch (err) {
+      throw new Error(apiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -57,7 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, register, updateMe, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
