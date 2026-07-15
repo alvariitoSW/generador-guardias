@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, apiErrorMessage } from "../../api/client";
 import type { Resident } from "../../api/types";
+import { useAuth } from "../../context/AuthContext";
 
 export function ResidentsPage() {
+  const { user } = useAuth();
   const [residents, setResidents] = useState<Resident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,10 @@ export function ResidentsPage() {
 
   useEffect(load, []);
 
-  async function updateResident(id: string, data: Partial<{ monthlyQuota: number; residencyYear: number; active: boolean }>) {
+  async function updateResident(
+    id: string,
+    data: Partial<{ monthlyQuota: number; residencyYear: number; active: boolean; role: "ADMIN" | "RESIDENT" }>
+  ) {
     setSavingId(id);
     try {
       await api.patch(`/residents/${id}`, data);
@@ -86,6 +91,7 @@ export function ResidentsPage() {
                 <th className="px-4 py-2 font-medium">Año</th>
                 <th className="px-4 py-2 font-medium">Guardias/mes</th>
                 <th className="px-4 py-2 font-medium">Activo</th>
+                <th className="px-4 py-2 font-medium">Rol</th>
               </tr>
             </thead>
             <tbody>
@@ -129,6 +135,27 @@ export function ResidentsPage() {
                     >
                       {r.user.active ? "Activo" : "Pendiente"}
                     </button>
+                  </td>
+                  <td className="px-4 py-2">
+                    {r.user.isPrimaryAdmin ? (
+                      <span className="px-2 py-1 rounded-md text-xs font-medium bg-indigo-100 text-indigo-700">
+                        Admin principal
+                      </span>
+                    ) : user?.isPrimaryAdmin ? (
+                      <button
+                        disabled={savingId === r.id}
+                        onClick={() => updateResident(r.id, { role: r.user.role === "ADMIN" ? "RESIDENT" : "ADMIN" })}
+                        className={`px-2 py-1 rounded-md text-xs font-medium ${
+                          r.user.role === "ADMIN" ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {r.user.role === "ADMIN" ? "Quitar admin" : "Hacer administrador"}
+                      </button>
+                    ) : (
+                      <span className="px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-600">
+                        {r.user.role === "ADMIN" ? "Administrador" : "Residente"}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

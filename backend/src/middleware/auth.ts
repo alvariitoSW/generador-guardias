@@ -2,8 +2,14 @@ import { Request, Response, NextFunction } from "express";
 import { verifyToken, TokenPayload } from "../utils/jwt";
 import { prisma } from "../prismaClient";
 
+export interface AuthContext {
+  userId: string;
+  role: "ADMIN" | "RESIDENT";
+  isPrimaryAdmin: boolean;
+}
+
 export interface AuthRequest extends Request {
-  auth?: TokenPayload;
+  auth?: AuthContext;
 }
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -21,18 +27,28 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
 
   // Se comprueba en BD (no solo en el token) para que desactivar una cuenta
   // la deje fuera al instante, aunque su token todavía sea válido.
-  const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { active: true, role: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { active: true, role: true, isPrimaryAdmin: true },
+  });
   if (!user || !user.active) {
     return res.status(401).json({ error: "Cuenta inactiva o pendiente de activación" });
   }
 
-  req.auth = { userId: payload.userId, role: user.role };
+  req.auth = { userId: payload.userId, role: user.role, isPrimaryAdmin: user.isPrimaryAdmin };
   next();
 }
 
 export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
   if (req.auth?.role !== "ADMIN") {
     return res.status(403).json({ error: "Requiere permisos de administrador" });
+  }
+  next();
+}
+
+export function requirePrimaryAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!req.auth?.isPrimaryAdmin) {
+    return res.status(403).json({ error: "Solo el administrador principal puede hacer esto" });
   }
   next();
 }

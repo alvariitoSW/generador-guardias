@@ -30,15 +30,17 @@ enum SwapOfferStatus {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  passwordHash String
-  name         String
-  role         Role        @default(RESIDENT)
-  active       Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  resident     Resident?
-  claimedName  RosterName?
+  id             String      @id @default(cuid())
+  email          String      @unique
+  passwordHash   String
+  name           String
+  role           Role        @default(RESIDENT)
+  // El admin principal es el único que puede nombrar/quitar administradores secundarios.
+  isPrimaryAdmin Boolean     @default(false)
+  active         Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  resident       Resident?
+  claimedName    RosterName?
 }
 
 // Lista de residentes reales que pueden "reclamar" su nombre al registrarse,

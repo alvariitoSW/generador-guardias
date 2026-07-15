@@ -5,6 +5,7 @@ export interface User {
   email: string;
   name: string;
   role: Role;
+  isPrimaryAdmin?: boolean;
 }
 
 export interface Resident {
@@ -12,7 +13,7 @@ export interface Resident {
   userId: string;
   residencyYear: number | null;
   monthlyQuota: number;
-  user: { name: string; email: string; active?: boolean; role?: Role };
+  user: { name: string; email: string; active?: boolean; role?: Role; isPrimaryAdmin?: boolean };
 }
 
 export interface Post {

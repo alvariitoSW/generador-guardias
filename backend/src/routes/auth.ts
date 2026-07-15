@@ -104,7 +104,7 @@ router.post("/login", async (req, res) => {
   const token = signToken({ userId: user.id, role: user.role });
   return res.json({
     token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: { id: user.id, email: user.email, name: user.name, role: user.role, isPrimaryAdmin: user.isPrimaryAdmin },
   });
 });
 
@@ -119,6 +119,7 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
     email: user.email,
     name: user.name,
     role: user.role,
+    isPrimaryAdmin: user.isPrimaryAdmin,
     resident: user.resident,
   });
 });

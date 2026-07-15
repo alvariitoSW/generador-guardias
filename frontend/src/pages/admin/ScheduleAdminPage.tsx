@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { api, apiErrorMessage } from "../../api/client";
 import type { Resident, ScheduleMonth, ShiftAssignment } from "../../api/types";
 import { useServices } from "../../hooks/useServices";
@@ -6,6 +8,11 @@ import { MonthPicker } from "../../components/MonthPicker";
 import { getWorkingDaysISO, formatDayLabel } from "../../utils/dates";
 
 const today = new Date();
+
+const MONTH_NAMES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
 
 export function ScheduleAdminPage() {
   const { services } = useServices();
@@ -103,6 +110,34 @@ export function ScheduleAdminPage() {
     }
   }
 
+  function handleDownloadPdf() {
+    if (!schedule) return;
+    const doc = new jsPDF({ orientation: "landscape" });
+    const title = `Cuadrante de guardias — ${service.name} — ${MONTH_NAMES[month - 1]} ${year}`;
+    doc.setFontSize(14);
+    doc.text(title, 14, 14);
+
+    const head = [["Día", ...service.posts.map((p) => p.name)]];
+    const body = workingDays.map((date) => [
+      formatDayLabel(date),
+      ...service.posts.map((post) => {
+        const assigned = assignmentsByKey.get(`${date}|${post.id}`) ?? [];
+        const names = Array.from({ length: post.slotsPerDay }).map((_, i) => assigned[i]?.resident.user.name ?? "—");
+        return names.join("\n");
+      }),
+    ]);
+
+    autoTable(doc, {
+      head,
+      body,
+      startY: 20,
+      styles: { fontSize: 9, cellPadding: 2, valign: "middle" },
+      headStyles: { fillColor: [79, 70, 229] },
+    });
+
+    doc.save(`cuadrante-${service.name.toLowerCase()}-${year}-${String(month).padStart(2, "0")}.pdf`);
+  }
+
   if (!service) return <p className="text-slate-500">Cargando...</p>;
 
   return (
@@ -127,6 +162,14 @@ export function ScheduleAdminPage() {
             className="bg-emerald-600 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
           >
             {publishing ? "Publicando..." : "Publicar cuadrante"}
+          </button>
+        )}
+        {schedule && (
+          <button
+            onClick={handleDownloadPdf}
+            className="bg-white border border-slate-300 text-slate-700 rounded-md px-4 py-2 text-sm font-medium hover:bg-slate-50"
+          >
+            Descargar PDF
           </button>
         )}
         {schedule && (

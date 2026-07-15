@@ -8,7 +8,9 @@ const router = Router();
 // Listado de todos los residentes (solo admin) — para gestión y para la generación de cuadrantes
 router.get("/", requireAuth, requireAdmin, async (_req, res) => {
   const residents = await prisma.resident.findMany({
-    include: { user: { select: { id: true, name: true, email: true, active: true, role: true } } },
+    include: {
+      user: { select: { id: true, name: true, email: true, active: true, role: true, isPrimaryAdmin: true } },
+    },
     orderBy: { user: { name: "asc" } },
   });
   return res.json(residents);
@@ -21,16 +23,27 @@ const updateSchema = z.object({
   role: z.enum(["ADMIN", "RESIDENT"]).optional(),
 });
 
-// Admin puede editar cuota mensual, año de residencia, activar/desactivar o cambiar rol
-router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
+// Admin puede editar cuota mensual, año de residencia y activar/desactivar.
+// Solo el admin principal puede ascender a alguien a administrador o quitarle ese rol.
+router.patch("/:id", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0].message });
   }
   const { residencyYear, monthlyQuota, active, role } = parsed.data;
 
-  const resident = await prisma.resident.findUnique({ where: { id: String(req.params.id) } });
+  if (role !== undefined && !req.auth!.isPrimaryAdmin) {
+    return res.status(403).json({ error: "Solo el administrador principal puede nombrar o quitar administradores" });
+  }
+
+  const resident = await prisma.resident.findUnique({
+    where: { id: String(req.params.id) },
+    include: { user: { select: { isPrimaryAdmin: true } } },
+  });
   if (!resident) return res.status(404).json({ error: "Residente no encontrado" });
+  if (resident.user.isPrimaryAdmin && (role !== undefined || active === false)) {
+    return res.status(400).json({ error: "No se puede cambiar el rol ni desactivar al administrador principal" });
+  }
 
   const updated = await prisma.resident.update({
     where: { id: resident.id },

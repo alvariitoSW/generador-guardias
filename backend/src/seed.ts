@@ -44,11 +44,16 @@ async function main() {
         name: "Administrador",
         passwordHash,
         role: "ADMIN",
+        isPrimaryAdmin: true,
       },
     });
     console.log(`Usuario admin creado: ${adminEmail} / admin1234 (cámbialo tras el primer login)`);
   } else {
-    console.log("El usuario admin ya existía, no se ha modificado.");
+    // Asegura que siga siendo el admin principal aunque la cuenta ya existiera de antes.
+    if (!existingAdmin.isPrimaryAdmin) {
+      await prisma.user.update({ where: { id: existingAdmin.id }, data: { isPrimaryAdmin: true } });
+    }
+    console.log("El usuario admin ya existía; confirmado como admin principal.");
   }
 
   let created = 0;
