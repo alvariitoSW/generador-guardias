@@ -69,18 +69,16 @@ function toISODate(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
-/** Lunes=1 ... Viernes=5 (los fines de semana se filtran antes de llegar aquí) */
+/** Domingo=0 ... Sábado=6 */
 function weekdayNumber(date: Date): number {
   return getDay(date);
 }
 
-export function getWorkingDays(year: number, month: number): Date[] {
+/** Todos los días del mes (incluye fines de semana): el cuadrante cubre los 7 días de la semana. */
+export function getScheduleDays(year: number, month: number): Date[] {
   const start = startOfMonth(new Date(year, month - 1, 1));
   const end = endOfMonth(start);
-  return eachDayOfInterval({ start, end }).filter((d) => {
-    const day = getDay(d);
-    return day >= 1 && day <= 5;
-  });
+  return eachDayOfInterval({ start, end });
 }
 
 function isOnVacation(resident: ResidentInput, date: Date): boolean {
@@ -134,7 +132,7 @@ function shuffle<T>(arr: T[]): T[] {
  * y por último las preferencias del residente.
  */
 export function generateSchedule(input: GenerateScheduleInput): GenerateScheduleResult {
-  const days = getWorkingDays(input.year, input.month);
+  const days = getScheduleDays(input.year, input.month);
 
   interface Slot {
     day: Date;

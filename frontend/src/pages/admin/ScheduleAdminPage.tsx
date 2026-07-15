@@ -6,7 +6,7 @@ import type { Resident, ScheduleMonth, ShiftAssignment } from "../../api/types";
 import { useServices } from "../../hooks/useServices";
 import { useAuth } from "../../context/AuthContext";
 import { MonthPicker } from "../../components/MonthPicker";
-import { getWorkingDaysISO, formatDayLabel } from "../../utils/dates";
+import { getScheduleDaysISO, formatDayLabel } from "../../utils/dates";
 
 const today = new Date();
 
@@ -48,7 +48,7 @@ export function ScheduleAdminPage() {
     api.get<Resident[]>("/residents").then((res) => setResidents(res.data));
   }, []);
 
-  const workingDays = useMemo(() => (service ? getWorkingDaysISO(year, month) : []), [service, year, month]);
+  const scheduleDays = useMemo(() => (service ? getScheduleDaysISO(year, month) : []), [service, year, month]);
 
   const assignmentsByKey = useMemo(() => {
     const map = new Map<string, ShiftAssignment[]>();
@@ -139,7 +139,7 @@ export function ScheduleAdminPage() {
     doc.text(title, 14, 14);
 
     const head = [["Día", ...service.posts.map((p) => p.name)]];
-    const body = workingDays.map((date) => [
+    const body = scheduleDays.map((date) => [
       formatDayLabel(date),
       ...service.posts.map((post) => {
         const assigned = assignmentsByKey.get(`${date}|${post.id}`) ?? [];
@@ -265,7 +265,7 @@ export function ScheduleAdminPage() {
               </tr>
             </thead>
             <tbody>
-              {workingDays.map((date) => (
+              {scheduleDays.map((date) => (
                 <tr key={date} className="border-t border-slate-100">
                   <td className="px-3 py-2 text-slate-600 font-medium sticky left-0 bg-white">{formatDayLabel(date)}</td>
                   {service.posts.map((post) => {

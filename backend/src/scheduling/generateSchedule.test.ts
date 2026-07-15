@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateSchedule, getWorkingDays, ResidentInput } from "./generateSchedule";
+import { generateSchedule, getScheduleDays, ResidentInput } from "./generateSchedule";
 
 const POSTS = [
   { id: "p1", slotsPerDay: 2 },
@@ -27,11 +27,12 @@ function makeResidents(count: number, overrides: Partial<ResidentInput> = {}): R
 
 describe("generateSchedule", () => {
   it("fills every slot when there is enough capacity", () => {
-    const residents = makeResidents(60);
-    const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
-
-    const days = getWorkingDays(2026, 7);
+    const days = getScheduleDays(2026, 7);
     const expectedSlots = days.length * POSTS.length * 2;
+    // Algo de margen sobre el mínimo teórico (huecos/4): con la capacidad justa,
+    // la regla de descanso de 24h puede dejar algún hueco imposible de cubrir.
+    const residents = makeResidents(Math.ceil((expectedSlots / 4) * 1.3));
+    const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
 
     expect(result.assignments.length).toBe(expectedSlots);
     expect(result.unfilledSlots.length).toBe(0);
@@ -91,7 +92,7 @@ describe("generateSchedule", () => {
     const residents = makeResidents(5, { monthlyQuota: 4 }); // muy pocos residentes
     const result = generateSchedule({ year: 2026, month: 7, posts: POSTS, residents });
 
-    const days = getWorkingDays(2026, 7);
+    const days = getScheduleDays(2026, 7);
     const expectedSlots = days.length * POSTS.length * 2;
 
     expect(result.unfilledSlots.length).toBeGreaterThan(0);
@@ -99,7 +100,7 @@ describe("generateSchedule", () => {
   });
 
   it("distributes shifts fairly across residents when capacity roughly matches demand", () => {
-    const days = getWorkingDays(2026, 7).length;
+    const days = getScheduleDays(2026, 7).length;
     const totalSlots = days * POSTS.length * 2;
     const residentCount = Math.ceil(totalSlots / 4);
     const residents = makeResidents(residentCount, { monthlyQuota: 4 });
