@@ -292,4 +292,15 @@ router.delete("/:id/approve", requireAuth, requireAdmin, async (req: AuthRequest
   return res.json({ approvalStatus: await buildApprovalStatus(scheduleMonth.id) });
 });
 
+// Elimina un cuadrante entero (borrador o ya publicado), por si hay que empezar
+// de cero. Al borrar el ScheduleMonth se eliminan en cascada sus asignaciones,
+// validaciones y cualquier solicitud de cambio de guardia asociada.
+router.delete("/:id", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
+  const scheduleMonth = await prisma.scheduleMonth.findUnique({ where: { id: String(req.params.id) } });
+  if (!scheduleMonth) return res.status(404).json({ error: "Cuadrante no encontrado" });
+
+  await prisma.scheduleMonth.delete({ where: { id: scheduleMonth.id } });
+  return res.status(204).send();
+});
+
 export default router;

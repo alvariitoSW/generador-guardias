@@ -27,6 +27,7 @@ export function ScheduleAdminPage() {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [unfilledCount, setUnfilledCount] = useState(0);
@@ -112,6 +113,26 @@ export function ScheduleAdminPage() {
       setError(apiErrorMessage(err));
     } finally {
       setApproving(false);
+    }
+  }
+
+  async function handleDeleteSchedule() {
+    if (!schedule) return;
+    const warning =
+      schedule.status === "PUBLISHED"
+        ? `¿Seguro que quieres eliminar el cuadrante publicado de ${MONTH_NAMES[month - 1]} ${year}? Los residentes dejarán de verlo y se perderán las solicitudes de cambio de guardia asociadas. Esta acción no se puede deshacer.`
+        : `¿Seguro que quieres eliminar este borrador de cuadrante? Esta acción no se puede deshacer.`;
+    if (!window.confirm(warning)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await api.delete(`/schedule/${schedule.id}`);
+      setNotice(null);
+      setSchedule(null);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -201,6 +222,15 @@ export function ScheduleAdminPage() {
             className="bg-white border border-slate-300 text-slate-700 rounded-md px-4 py-2 text-sm font-medium hover:bg-slate-50"
           >
             Descargar PDF
+          </button>
+        )}
+        {schedule && (
+          <button
+            onClick={handleDeleteSchedule}
+            disabled={deleting}
+            className="bg-white border border-red-300 text-red-600 rounded-md px-4 py-2 text-sm font-medium hover:bg-red-50 disabled:opacity-50"
+          >
+            {deleting ? "Eliminando..." : "Eliminar cuadrante"}
           </button>
         )}
         {schedule && (
