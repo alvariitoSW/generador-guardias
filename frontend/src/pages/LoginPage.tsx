@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -10,17 +10,24 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [slowNotice, setSlowNotice] = useState(false);
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setSlowNotice(false);
     setSubmitting(true);
+    // El servidor gratuito puede tardar en "despertar" si llevaba un rato sin uso.
+    slowTimer.current = setTimeout(() => setSlowNotice(true), 6000);
     try {
       await login(email, password);
       navigate("/");
     } catch (err) {
       setError((err as Error).message);
     } finally {
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+      setSlowNotice(false);
       setSubmitting(false);
     }
   }
@@ -52,6 +59,11 @@ export function LoginPage() {
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
+          {submitting && slowNotice && (
+            <p className="text-sm text-amber-600">
+              Está tardando más de lo normal — el servidor puede estar "despertando" tras un rato inactivo. Puede tardar hasta un minuto.
+            </p>
+          )}
           <button
             type="submit"
             disabled={submitting}
