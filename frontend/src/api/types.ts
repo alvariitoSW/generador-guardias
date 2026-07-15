@@ -71,6 +71,19 @@ export interface ShiftAssignment {
   resident: { id: string; user: { name: string; email: string } };
 }
 
+export interface ScheduleApprovalAdmin {
+  id: string;
+  name: string;
+  isPrimaryAdmin: boolean;
+  approved: boolean;
+  approvedAt: string | null;
+}
+
+export interface ScheduleApprovalStatus {
+  admins: ScheduleApprovalAdmin[];
+  allApproved: boolean;
+}
+
 export interface ScheduleMonth {
   id: string;
   serviceId: string;
@@ -80,6 +93,7 @@ export interface ScheduleMonth {
   generatedAt: string | null;
   publishedAt: string | null;
   assignments: ShiftAssignment[];
+  approvalStatus?: ScheduleApprovalStatus;
 }
 
 export interface SwapOffer {

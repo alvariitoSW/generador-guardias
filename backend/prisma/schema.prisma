@@ -41,6 +41,7 @@ model User {
   createdAt      DateTime    @default(now())
   resident       Resident?
   claimedName    RosterName?
+  scheduleApprovals ScheduleApproval[]
 }
 
 // Lista de residentes reales que pueden "reclamar" su nombre al registrarse,
@@ -148,8 +149,23 @@ model ScheduleMonth {
   createdAt   DateTime       @default(now())
 
   assignments ShiftAssignment[]
+  approvals   ScheduleApproval[]
 
   @@unique([serviceId, year, month])
+}
+
+// Cada administrador activo debe validar un borrador de cuadrante antes de que
+// se publique. En cuanto todos los administradores activos lo han validado,
+// el cuadrante pasa a PUBLISHED automáticamente y se hace visible a los residentes.
+model ScheduleApproval {
+  id              String        @id @default(cuid())
+  scheduleMonthId String
+  scheduleMonth   ScheduleMonth @relation(fields: [scheduleMonthId], references: [id], onDelete: Cascade)
+  adminUserId     String
+  admin           User          @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  approvedAt      DateTime      @default(now())
+
+  @@unique([scheduleMonthId, adminUserId])
 }
 
 model ShiftAssignment {

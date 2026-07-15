@@ -11,6 +11,36 @@ function isUniqueConstraintError(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 }
 
+// Cada administrador activo debe validar el borrador antes de que se publique.
+// Se recalcula siempre desde la BD (no se cachea) para reflejar altas/bajas de admins.
+async function buildApprovalStatus(scheduleMonthId: string) {
+  const [admins, approvals] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "ADMIN", active: true },
+      select: { id: true, name: true, isPrimaryAdmin: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.scheduleApproval.findMany({ where: { scheduleMonthId } }),
+  ]);
+  const approvalByAdminId = new Map(approvals.map((a) => [a.adminUserId, a.approvedAt]));
+  return {
+    admins: admins.map((a) => ({
+      id: a.id,
+      name: a.name,
+      isPrimaryAdmin: a.isPrimaryAdmin,
+      approved: approvalByAdminId.has(a.id),
+      approvedAt: approvalByAdminId.get(a.id) ?? null,
+    })),
+    allApproved: admins.length > 0 && admins.every((a) => approvalByAdminId.has(a.id)),
+  };
+}
+
+// Cualquier cambio en el contenido del borrador invalida las validaciones ya dadas,
+// para que ningún administrador apruebe sin haber visto la versión final.
+async function resetApprovals(scheduleMonthId: string) {
+  await prisma.scheduleApproval.deleteMany({ where: { scheduleMonthId } });
+}
+
 const generateSchema = z.object({
   serviceId: z.string(),
   year: z.number().int().min(2020).max(2100),
@@ -97,11 +127,14 @@ router.post("/generate", requireAuth, requireAdmin, async (req, res) => {
       })),
     });
   }
+  // Un cuadrante recién (re)generado es un borrador nuevo: nadie lo ha validado todavía.
+  await resetApprovals(scheduleMonth.id);
 
   return res.status(201).json({
     scheduleMonth,
     unfilledSlots: result.unfilledSlots,
     stats: result.stats,
+    approvalStatus: await buildApprovalStatus(scheduleMonth.id),
   });
 });
 
@@ -133,6 +166,9 @@ router.get("/", requireAuth, async (req: AuthRequest, res) => {
     return res.status(403).json({ error: "El cuadrante de este mes aún no se ha publicado" });
   }
 
+  if (req.auth!.role === "ADMIN") {
+    return res.json({ ...scheduleMonth, approvalStatus: await buildApprovalStatus(scheduleMonth.id) });
+  }
   return res.json(scheduleMonth);
 });
 
@@ -161,6 +197,7 @@ router.patch("/assignments/:id", requireAuth, requireAdmin, async (req, res) => 
       data: { residentId: parsed.data.residentId },
       include: { post: true, resident: { include: { user: { select: { name: true, email: true } } } } },
     });
+    await resetApprovals(existing.scheduleMonthId);
     return res.json({ assignment: updated, warning: clash ? "Este residente ya tiene guardia asignada ese día" : null });
   } catch (err) {
     if (isUniqueConstraintError(err)) {
@@ -174,6 +211,7 @@ router.delete("/assignments/:id", requireAuth, requireAdmin, async (req, res) =>
   const existing = await prisma.shiftAssignment.findUnique({ where: { id: String(req.params.id) } });
   if (!existing) return res.status(404).json({ error: "Asignación no encontrada" });
   await prisma.shiftAssignment.delete({ where: { id: existing.id } });
+  await resetApprovals(existing.scheduleMonthId);
   return res.status(204).send();
 });
 
@@ -196,6 +234,7 @@ router.post("/assignments", requireAuth, requireAdmin, async (req, res) => {
       data: { scheduleMonthId, postId, residentId, date: new Date(`${date}T00:00:00`) },
       include: { post: true, resident: { include: { user: { select: { name: true, email: true } } } } },
     });
+    await resetApprovals(scheduleMonthId);
     return res.status(201).json(created);
   } catch (err) {
     if (isUniqueConstraintError(err)) {
@@ -205,15 +244,45 @@ router.post("/assignments", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/:id/publish", requireAuth, requireAdmin, async (req, res) => {
+// Un administrador valida el borrador. En cuanto todos los administradores activos
+// lo han validado, se publica automáticamente y se hace visible a los residentes.
+router.post("/:id/approve", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
   const scheduleMonth = await prisma.scheduleMonth.findUnique({ where: { id: String(req.params.id) } });
   if (!scheduleMonth) return res.status(404).json({ error: "Cuadrante no encontrado" });
+  if (scheduleMonth.status === "PUBLISHED") {
+    return res.status(400).json({ error: "Este cuadrante ya está publicado" });
+  }
 
-  const updated = await prisma.scheduleMonth.update({
-    where: { id: scheduleMonth.id },
-    data: { status: "PUBLISHED", publishedAt: new Date() },
+  await prisma.scheduleApproval.upsert({
+    where: { scheduleMonthId_adminUserId: { scheduleMonthId: scheduleMonth.id, adminUserId: req.auth!.userId } },
+    create: { scheduleMonthId: scheduleMonth.id, adminUserId: req.auth!.userId },
+    update: {},
   });
-  return res.json(updated);
+
+  const approvalStatus = await buildApprovalStatus(scheduleMonth.id);
+  let updated = scheduleMonth;
+  if (approvalStatus.allApproved) {
+    updated = await prisma.scheduleMonth.update({
+      where: { id: scheduleMonth.id },
+      data: { status: "PUBLISHED", publishedAt: new Date() },
+    });
+  }
+  return res.json({ scheduleMonth: updated, approvalStatus });
+});
+
+// Retirar la propia validación (solo mientras siga en borrador).
+router.delete("/:id/approve", requireAuth, requireAdmin, async (req: AuthRequest, res) => {
+  const scheduleMonth = await prisma.scheduleMonth.findUnique({ where: { id: String(req.params.id) } });
+  if (!scheduleMonth) return res.status(404).json({ error: "Cuadrante no encontrado" });
+  if (scheduleMonth.status === "PUBLISHED") {
+    return res.status(400).json({ error: "Este cuadrante ya está publicado, no se puede retirar la validación" });
+  }
+
+  await prisma.scheduleApproval.deleteMany({
+    where: { scheduleMonthId: scheduleMonth.id, adminUserId: req.auth!.userId },
+  });
+
+  return res.json({ approvalStatus: await buildApprovalStatus(scheduleMonth.id) });
 });
 
 export default router;

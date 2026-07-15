@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 import { api, apiErrorMessage } from "../../api/client";
 import type { Resident, ScheduleMonth, ShiftAssignment } from "../../api/types";
 import { useServices } from "../../hooks/useServices";
+import { useAuth } from "../../context/AuthContext";
 import { MonthPicker } from "../../components/MonthPicker";
 import { getWorkingDaysISO, formatDayLabel } from "../../utils/dates";
 
@@ -15,6 +16,7 @@ const MONTH_NAMES = [
 ];
 
 export function ScheduleAdminPage() {
+  const { user } = useAuth();
   const { services } = useServices();
   const service = services[0];
   const [year, setYear] = useState(today.getFullYear());
@@ -24,7 +26,7 @@ export function ScheduleAdminPage() {
   const [residents, setResidents] = useState<Resident[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [unfilledCount, setUnfilledCount] = useState(0);
@@ -59,6 +61,11 @@ export function ScheduleAdminPage() {
 
   const activeResidents = useMemo(() => residents.filter((r) => r.user.active !== false), [residents]);
 
+  const myApproval = useMemo(
+    () => schedule?.approvalStatus?.admins.find((a) => a.id === user?.id) ?? null,
+    [schedule, user]
+  );
+
   async function handleGenerate() {
     if (!service) return;
     setGenerating(true);
@@ -80,17 +87,31 @@ export function ScheduleAdminPage() {
     }
   }
 
-  async function handlePublish() {
+  async function handleApprove() {
     if (!schedule) return;
-    setPublishing(true);
+    setApproving(true);
     setError(null);
     try {
-      await api.post(`/schedule/${schedule.id}/publish`);
+      await api.post(`/schedule/${schedule.id}/approve`);
       loadSchedule();
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
-      setPublishing(false);
+      setApproving(false);
+    }
+  }
+
+  async function handleUnapprove() {
+    if (!schedule) return;
+    setApproving(true);
+    setError(null);
+    try {
+      await api.delete(`/schedule/${schedule.id}/approve`);
+      loadSchedule();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setApproving(false);
     }
   }
 
@@ -155,14 +176,24 @@ export function ScheduleAdminPage() {
         >
           {generating ? "Generando..." : schedule ? "Regenerar cuadrante" : "Generar cuadrante"}
         </button>
-        {schedule && schedule.status === "DRAFT" && (
-          <button
-            onClick={handlePublish}
-            disabled={publishing}
-            className="bg-emerald-600 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {publishing ? "Publicando..." : "Publicar cuadrante"}
-          </button>
+        {schedule && schedule.status === "DRAFT" && myApproval && (
+          myApproval.approved ? (
+            <button
+              onClick={handleUnapprove}
+              disabled={approving}
+              className="bg-white border border-emerald-300 text-emerald-700 rounded-md px-4 py-2 text-sm font-medium hover:bg-emerald-50 disabled:opacity-50"
+            >
+              {approving ? "..." : "Quitar mi validación"}
+            </button>
+          ) : (
+            <button
+              onClick={handleApprove}
+              disabled={approving}
+              className="bg-emerald-600 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {approving ? "Validando..." : "Validar cuadrante"}
+            </button>
+          )
         )}
         {schedule && (
           <button
@@ -182,6 +213,34 @@ export function ScheduleAdminPage() {
           </span>
         )}
       </div>
+
+      {schedule?.approvalStatus && schedule.status === "DRAFT" && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-amber-900 mb-1">
+            Validación pendiente — este cuadrante no será visible para los residentes hasta que todos los
+            administradores lo validen
+          </h2>
+          <p className="text-xs text-amber-700 mb-3">
+            {schedule.approvalStatus.admins.filter((a) => a.approved).length} de{" "}
+            {schedule.approvalStatus.admins.length} administrador
+            {schedule.approvalStatus.admins.length !== 1 ? "es" : ""} han validado.
+          </p>
+          <ul className="space-y-1">
+            {schedule.approvalStatus.admins.map((a) => (
+              <li key={a.id} className="flex items-center gap-2 text-sm">
+                <span
+                  className={`inline-block w-2.5 h-2.5 rounded-full ${a.approved ? "bg-emerald-500" : "bg-slate-300"}`}
+                />
+                <span className="text-slate-800">{a.name}</span>
+                {a.isPrimaryAdmin && <span className="text-xs text-slate-400">(principal)</span>}
+                <span className={`text-xs ${a.approved ? "text-emerald-600" : "text-slate-400"}`}>
+                  {a.approved ? "Validado" : "Pendiente"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
       {notice && (
