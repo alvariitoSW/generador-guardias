@@ -3,7 +3,19 @@ import axios from "axios";
 // En desarrollo, "/api" pasa por el proxy de Vite (ver vite.config.ts).
 // En producción, define VITE_API_URL con la URL del backend desplegado
 // (p.ej. https://tu-backend.up.railway.app/api).
-const baseURL = import.meta.env.VITE_API_URL || "/api";
+// En Render, render.yaml pasa solo el host del backend (p.ej.
+// "generador-guardias-backend-xxxx.onrender.com"), porque Render puede añadir
+// un sufijo al nombre y la URL no se conoce de antemano. Lo normalizamos a
+// una URL completa terminada en /api.
+function resolveBaseURL(raw: string | undefined): string {
+  const value = raw?.trim();
+  if (!value) return "/api";
+  let url = /^https?:\/\//.test(value) ? value : `https://${value}`;
+  url = url.replace(/\/+$/, "");
+  if (!url.endsWith("/api")) url += "/api";
+  return url;
+}
+const baseURL = resolveBaseURL(import.meta.env.VITE_API_URL);
 
 // En el plan gratuito de Render, el backend "duerme" tras un rato inactivo y
 // puede tardar hasta un minuto en despertar con la primera petición. Sin un

@@ -13,8 +13,18 @@ import swapRoutes from "./routes/swaps";
 const app = express();
 // En producción, define CORS_ORIGIN con la URL del frontend desplegado
 // (p.ej. https://tuapp.vercel.app). En desarrollo, sin definir, se permite cualquier origen.
-const corsOrigin = process.env.CORS_ORIGIN;
-app.use(cors({ origin: corsOrigin ? corsOrigin.split(",") : true }));
+// "*" permite cualquier origen: la API se autentica con un token Bearer (no
+// cookies), así que restringir el origen no añade seguridad real y evita
+// romper la app cuando la URL del frontend cambia (Render añade sufijos).
+const corsOrigin = process.env.CORS_ORIGIN?.trim();
+const allowAll = !corsOrigin || corsOrigin === "*";
+app.use(
+  cors({
+    origin: allowAll
+      ? true
+      : corsOrigin.split(",").map((o) => o.trim().replace(/\/+$/, "")),
+  }),
+);
 app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));

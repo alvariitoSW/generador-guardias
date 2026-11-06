@@ -19,8 +19,10 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      # La URL real del frontend puede llevar un sufijo que pone Render
+      # (p.ej. -9f7d), así que no se fija aquí. La API usa token Bearer.
       - key: CORS_ORIGIN
-        value: https://generador-guardias-frontend.onrender.com
+        value: "*"
 
   - type: web
     name: generador-guardias-frontend
@@ -29,8 +31,13 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
+      # Host real del backend (incluido el sufijo que añada Render); el
+      # frontend le añade https:// y /api.
       - key: VITE_API_URL
-        value: https://generador-guardias-backend.onrender.com/api
+        fromService:
+          type: web
+          name: generador-guardias-backend
+          property: host
     routes:
       - type: rewrite
         source: /*
